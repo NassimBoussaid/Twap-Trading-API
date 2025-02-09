@@ -68,7 +68,7 @@ def main():
     # Test exchanges endpoint
     tester.test_endpoint(
         "/exchanges",
-        expected_data={"exchanges": ["Binance", "Coinbase"]},
+        expected_data={"exchanges": ["Binance", "Bybit", "Coinbase", "Kucoin"]},
         error_message="The exchanges endpoint should return a list of all available exchanges"
     )
 
@@ -83,8 +83,17 @@ def main():
     # https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=1738368000000&endTime=1738371600000
     tester.test_endpoint(
         "/klines/Binance/BTCUSDT",
-        expected_data={"klines": [{"Open": 102429.56, "High": 102783.71, "Low": 100279.51,
-                                  "Close": 100635.65, "Volume": 12290.95747}]},
+        expected_data= {
+                          "klines": {
+                            "2025-02-01T00:00:00": {
+                              "Open": 102429.56,
+                              "High": 102783.71,
+                              "Low": 100279.51,
+                              "Close": 100635.65,
+                              "Volume": 12290.95747
+                            }
+                          }
+                        },
         error_message="The klines endpoint should return a list of dictionaries with historical data",
         params={"interval": "1d", "start_time": "2025-02-01T00:00:00", "end_time": "2025-02-01T01:00:00"}
     )
