@@ -5,7 +5,7 @@ from datetime import datetime
 class ExchangeBase(ABC):
 
     @abstractmethod
-    def get_candlestick_data(self, symbol: str, interval: str, limit: int,
+    def get_klines_data(self, symbol: str, interval: str, limit: int,
                              start_time: datetime, end_time: datetime) -> List[Dict]:
         pass
 
