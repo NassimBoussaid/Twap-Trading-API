@@ -6,13 +6,11 @@ from Server_.Exchanges.ExchangeBase import ExchangeBase
 from datetime import datetime, timedelta
 import aiohttp
 
-
 class ExchangeBybit(ExchangeBase):
 
     def __init__(self):
         # Set up Bybit REST and WebSocket URLs
         self.BYBIT_REST_URL = "https://api.bybit.com/v5"
-        self.BINANCE_WS_URL = "wss://stream.bybit.com/v5/public/spot"
         # Map each interval to its corresponding minute offset for updating the start time
         self.valid_timeframe = {
             "1m": "1", "3m": "3", "5m": "5", "15m": "15",
@@ -27,7 +25,6 @@ class ExchangeBybit(ExchangeBase):
             "6h": 360, "12h": 720, "1d": 1440,
             "1w": 10080, "1M": 43800
         }
-
 
     def get_trading_pairs(self) -> List[str]:
         # Send a GET request to retrieve all trading pairs
@@ -100,21 +97,10 @@ class ExchangeBybit(ExchangeBase):
 
             return df
 
-
-def main():
-    # Instantiate the ExchangeBybit class
+async def main():
     exchange = ExchangeBybit()
-    # Define the time interval for data retrieval (example: data from the last 600 days)
-    start_time = "2025-02-01T00:00:00"
-    end_time = "2025-02-01T01:00:00"
-    start_time_dt = datetime.fromisoformat(start_time)
-    end_time_dt = datetime.fromisoformat(end_time)
-    # Asynchronously fetch historical klines for the specified symbol and interval
-    klines_df = asyncio.run(exchange.get_klines_data("BTCUSDT", "1d", start_time_dt, end_time_dt))
-    # Print the resulting DataFrame
-    print(klines_df)
+    await exchange.get_trading_pairs()
 
 
 if __name__ == "__main__":
-    # Execute the main function when the script is run directly
-    main()
+    asyncio.run(main())

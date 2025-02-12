@@ -3,22 +3,48 @@ import pandas as pd
 import asyncio
 import websockets
 from typing import List
-from Server_.Exchanges.ExchangeBase import ExchangeBase
 from datetime import datetime, timedelta
 import aiohttp
+import json
+import hmac
+import hashlib
+import base64
+import time
+import jwt
 
-
-class ExchangeCoinbase(ExchangeBase):
+class ExchangeCoinbase:
 
     def __init__(self):
-        # Set up Coinbase REST and WebSocket URLs
+        # Set up Coinbase Advanced Trade API URLs
         self.COINBASE_REST_URL = "https://api.exchange.coinbase.com"
-        self.COINBASE_WS_URL = "wss://ws-feed.pro.coinbase.com"
-
-        # Mapping des intervalles Binance vers les granularités en secondes de Coinbase
+        self.COINBASE_WS_URL = "wss://advanced-trade-ws.coinbase.com"
+        self.api_key = "organizations/67d97ed2-6f4a-49c7-9d59-dd798de5ea58/apiKeys/228a96fc-7144-41de-ac29-9c02e0d10ae9"
+        self.api_secret = "-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIMg6N+zQqHhZoN1y99AvbYSHjtNmBkLQWXF8SvcJIVgHoAoGCCqGSM49\nAwEHoUQDQgAEx3apFdi41O4j0yhUYv2qPDVxe/UaLh////s5cM0MkL0JJ6EwDlyQ\ny6TzG7jk7mEicQk8T/lo/xneYE9i2DnlSg==\n-----END EC PRIVATE KEY-----\n"
+        self.bids = {}
+        self.asks = {}
         self.valid_timeframe = {
             "1m": 1, "5m": 5, "15m": 15, "1h": 60, "6h": 360, "1d": 1440,
         }
+
+    def get_jwt_token(self):
+        payload = {
+            "iss": self.api_key,
+            "sub": self.api_key,
+            "aud": "coinbase-cloud",
+            "iat": int(time.time()),
+            "exp": int(time.time()) + 300
+        }
+        private_key = self.api_secret.replace('\n', '\n').strip()
+        token = jwt.encode(payload, private_key, algorithm='ES256')
+        return token
+
+    def get_headers(self):
+        token = self.get_jwt_token()
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json'
+        }
+        return headers
 
     def get_trading_pairs(self) -> List[str]:
         """ Récupère la liste des paires de trading sur Coinbase. """
@@ -77,16 +103,90 @@ class ExchangeCoinbase(ExchangeBase):
 
             return df
 
-def main():
+    def update_order_book(self, side, price, volume):
+        if side == "bid":
+            if volume == 0:
+                self.bids.pop(price, None)
+            else:
+                self.bids[price] = volume
+        else:
+            if volume == 0:
+                self.asks.pop(price, None)
+            else:
+                self.asks[price] = volume
+
+    def display_order_book(self, symbol, timestamp):
+        # Sort bids descending and asks ascending
+        top_bids = sorted(self.bids.items(), key=lambda x: -x[0])[:10]
+        top_asks = sorted(self.asks.items(), key=lambda x: x[0])[:10]
+
+        current_order_book = pd.DataFrame({
+            "Ask Price": [ask[0] for ask in top_asks],
+            "Ask Volume": [ask[1] for ask in top_asks],
+            "Bid Price": [bid[0] for bid in top_bids],
+            "Bid Volume": [bid[1] for bid in top_bids],
+        }, index=[f"Level {i}" for i in range(1, 11)])
+
+        # Display the DataFrame
+        print()
+        print(f"Order Book for {symbol.upper()}")
+        print(f"Updating Order Book... [{timestamp}]")
+        print()
+        print("="*60)
+        print(current_order_book.to_string(index=True, float_format="{:.4f}".format))
+        print("="*60)
+
+    async def get_order_book(self, symbol: str, display: bool = True):
+        symbol_formatted = self.get_trading_pairs()[symbol]
+        token = self.get_jwt_token()
+        subscribe_message = {
+            "type": "subscribe",
+            "channel": "level2",
+            "product_ids": [symbol_formatted],
+            "token": token
+        }
+
+        async with websockets.connect(self.COINBASE_WS_URL) as websocket:
+
+            await websocket.send(json.dumps(subscribe_message))
+            print(f"📶 Connecting to Coinbase WebSocket for {symbol}")
+
+            last_update_time = time.time()
+
+            while True:
+                response = await websocket.recv()
+                data = json.loads(response)
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                if data.get("channel") == "l2_data":
+                    changes = data.get("events", [])[0].get("updates", [])
+
+                    # Apply updates to the order book
+                    for change in changes:
+                        side = change["side"]
+                        price = float(change["price_level"])
+                        volume = float(change["new_quantity"])
+
+                        self.update_order_book(side, price, volume)
+
+                    if time.time() - last_update_time >= 1:
+                        top_bids = sorted(self.bids.items(), key=lambda x: -x[0])[:10]
+                        top_asks = sorted(self.asks.items(), key=lambda x: x[0])[:10]
+
+                        if display:
+                            self.display_order_book(symbol_formatted, timestamp)
+                        else:
+                            yield {"bids": dict(top_bids), "asks": dict(top_asks)}
+
+                        last_update_time = time.time()
+
+
+
+async def main():
     exchange = ExchangeCoinbase()
-    start_time = "2024-02-07T00:00:00"
-    end_time = "2025-02-07T00:00:00"
-    start_time_dt = datetime.fromisoformat(start_time)
-    end_time_dt = datetime.fromisoformat(end_time)
-
-    klines_df = asyncio.run(exchange.get_klines_data("BTCUSDT", "1d", start_time_dt, end_time_dt))
-    print(klines_df)
-
+    async for bids, asks in exchange.get_order_book("BTCUSDT"):
+        print("Top 10 Bids:", bids)
+        print("Top 10 Asks:", asks)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

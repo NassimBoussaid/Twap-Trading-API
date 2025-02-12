@@ -1,11 +1,13 @@
+import traceback
 import requests
 import pandas as pd
 import asyncio
+import websockets
 from typing import List
 from Server_.Exchanges.ExchangeBase import ExchangeBase
 from datetime import datetime, timedelta
 import aiohttp
-
+import json
 
 class ExchangeBinance(ExchangeBase):
 
@@ -19,6 +21,8 @@ class ExchangeBinance(ExchangeBase):
             "1h": 60, "2h": 120, "3h": 180, "6h": 360, "8h": 480, "12h": 720, "1d": 1440,
             "3d": 4320, "1w": 10080, "1M": 43800
         }
+        self.bids = {}
+        self.asks = {}
 
     def get_trading_pairs(self) -> List[str]:
         # Send a GET request to retrieve all trading pairs
@@ -88,21 +92,66 @@ class ExchangeBinance(ExchangeBase):
 
             return df
 
+    def update_order_book(self, asks, bids):
+        self.asks = {float(price): float(volume) for price, volume in asks}
+        self.bids = {float(price): float(volume) for price, volume in bids}
 
-def main():
-    # Instantiate the ExchangeBinance class
+    def display_order_book(self, symbol, timestamp):
+        top_asks = sorted(self.asks.items())[:10]
+        top_bids = sorted(self.bids.items(), reverse=True)[:10]
+
+        current_order_book = pd.DataFrame({
+            "Ask Price": [ask[0] for ask in top_asks],
+            "Ask Volume": [ask[1] for ask in top_asks],
+            "Bid Price": [bid[0] for bid in top_bids],
+            "Bid Volume": [bid[1] for bid in top_bids],
+        }, index=[f"Level {i}" for i in range(1, 11)])
+
+        print(f"\nOrder Book for {symbol.upper()}")
+        print(f"Updating Order Book... [{timestamp}]")
+        print("=" * 60)
+        print(current_order_book.to_string(index=True, float_format="{:.4f}".format))
+        print("=" * 60)
+
+    async def get_order_book(self, symbol: str, display: bool = True):
+        spot_url = f"{self.BINANCE_WS_URL}/{symbol.lower()}@depth10"
+
+        try:
+            async with websockets.connect(spot_url) as websocket:
+                print(f"📶 Connecting to Binance WebSocket for {symbol.upper()}")
+
+                while True:
+                    response = await websocket.recv()
+                    data = json.loads(response)
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                    self.update_order_book(data["asks"], data["bids"])
+                    if display:
+                        self.display_order_book(symbol, timestamp)
+                    else:
+                        yield {"bids": dict(self.bids), "asks": dict(self.asks)}
+
+                    await asyncio.sleep(1)
+
+        except Exception as e:
+            print(f"WebSocket connection error: {e}")
+            await asyncio.sleep(1)
+
+async def run_all_tasks(exchange):
+    start_time = datetime.fromisoformat("2025-02-01T00:00:00")
+    end_time = datetime.fromisoformat("2025-02-02T01:00:00")
+
+    await asyncio.gather(
+        exchange.get_klines_data("BTCUSDT", "1d", start_time, end_time),
+        exchange.get_order_book("BTCUSDT")
+    )
+
+
+async def main():
     exchange = ExchangeBinance()
-    # Define the time interval for data retrieval (example: data from the last 600 days)
-    start_time = "2025-02-01T00:00:00"
-    end_time = "2025-02-02T01:00:00"
-    start_time_dt = datetime.fromisoformat(start_time)
-    end_time_dt = datetime.fromisoformat(end_time)
-    # Asynchronously fetch historical klines for the specified symbol and interval
-    klines_df = asyncio.run(exchange.get_klines_data("BTCUSDT", "1d", start_time_dt, end_time_dt))
-    # Print the resulting DataFrame
-    print(klines_df)
-
+    async for bids, asks in exchange.get_order_book("BTCUSDT"):
+        print("Top 10 Bids:", bids)
+        print("Top 10 Asks:", asks)
 
 if __name__ == "__main__":
-    # Execute the main function when the script is run directly
-    main()
+    asyncio.run(main())
