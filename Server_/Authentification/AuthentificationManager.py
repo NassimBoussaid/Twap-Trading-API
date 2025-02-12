@@ -1,11 +1,8 @@
-﻿from fastapi import FastAPI, Depends, HTTPException
+﻿from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import jwt as PyJWT
 from datetime import datetime, timedelta
-import time
-import os
-import toml
 
 SECRET_KEY = "9ff4412bec11bb73296122965fd46ca810b148e17cadfd2f64fc9eb635573539"
 security = HTTPBearer()

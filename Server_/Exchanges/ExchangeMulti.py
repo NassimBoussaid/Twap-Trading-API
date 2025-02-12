@@ -4,6 +4,7 @@ import pandas as pd
 from Server_.Exchanges.ExchangeBinance import ExchangeBinance
 from Server_.Exchanges.ExchangeCoinbase import ExchangeCoinbase
 
+
 class ExchangeMulti:
     def __init__(self, exchanges):
         self.exchanges = exchanges  # List of exchange instances (e.g., [ExchangeBinance(), ExchangeCoinbase()])

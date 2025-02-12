@@ -4,7 +4,6 @@ import json
 import pandas as pd
 from datetime import datetime
 
-
 async def test_websocket():
     uri = "ws://localhost:8000/ws"
 

@@ -6,6 +6,7 @@ from Server_.Exchanges.ExchangeBase import ExchangeBase
 from datetime import datetime, timedelta
 import aiohttp
 
+
 class ExchangeBybit(ExchangeBase):
 
     def __init__(self):

@@ -6,9 +6,6 @@ from typing import List
 from datetime import datetime, timedelta
 import aiohttp
 import json
-import hmac
-import hashlib
-import base64
 import time
 import jwt
 

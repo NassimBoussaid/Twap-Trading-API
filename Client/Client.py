@@ -5,9 +5,6 @@ import requests
 import time
 from typing import Dict, Any, Optional, Set
 
-from Server_.Server import websocket_endpoint
-
-
 class APITester:
     def __init__(self, base_url: str = "http://localhost:8000", base_uri: str = "ws://localhost:8000/ws"):
         self.base_url = base_url.rstrip("/")
@@ -15,6 +12,7 @@ class APITester:
         self.websocket = None
         self.all_tests_passed = True
         self.test_complete = asyncio.Event()
+        self.token = None
 
     def test_endpoint(self, endpoint: str, expected_status: int = 200,
                       expected_data: Optional[Dict[str, Any]] = None,
@@ -69,6 +67,63 @@ class APITester:
             print(f"❌ Failed to connect: {e}")
             self.all_tests_passed = False
             return False
+
+    def login(self, username: str, password: str) -> bool:
+        """Login and get JWT token"""
+        try:
+            response = requests.post(f"{self.base_url}/login", json={"username": username, "password": password})
+
+            try:
+                response_data = response.json()
+            except json.JSONDecodeError:
+                print(f"Server returned invalid JSON. Status code: {response.status_code}")
+                print(f"Response text: {response.text}")
+                return False
+
+            if response.status_code == 200:
+                self.token = response_data["access_token"]
+                return True
+
+            error_detail = response_data.get('detail','Unknown error')
+            print(f"Login failed: {error_detail}")
+            return False
+
+        except requests.exceptions.ConnectionError:
+            print(f"Connection error: Could not connect to {self.base_url}")
+            return False
+        except Exception as e:
+            print(f"Login error: {str(e)}")
+            return False
+
+    def get_secure_data(self):
+        """Access protected endpoint"""
+        if not self.token:
+            print("Not logged in!")
+            return None
+
+        try:
+            response = requests.get(
+                f"{self.base_url}/secure",
+                headers={"Authorization": f"Bearer {self.token}"}
+            )
+
+            if response.status_code != 200:
+                print(f"Error accessing secure endpoint. Status code: {response.status_code}")
+                try:
+                    error_detail = response.json().get('detail', 'Unknown error')
+                    print(f"Error detail: {error_detail}")
+                except:
+                    print(f"Response text: {response.text}")
+                return None
+
+            return response.json()
+
+        except requests.exceptions.ConnectionError:
+            print(f"Connection error: Could not connect to {self.base_url}")
+            return None
+        except Exception as e:
+            print(f"Error accessing secure endpoint: {str(e)}")
+            return None
 
     async def test_welcome_message(self, expected_welcome_message: Optional[Dict[str, Any]] = None):
         """Test if Websocket server sends welcome message"""
@@ -246,6 +301,20 @@ async def main():
 
     finally:
         await tester.cleanup()
+
+    if tester.login("nicolas", "couturaud123"):
+        print("Login successful!")
+        data = tester.get_secure_data()
+        print(f"Secure data: {data}")
+
+    print("\n2. Testing with invalid credentials...")
+    if not tester.login("alice", "wrong_password"):
+        print("Login correctly failed!")
+
+    print("\n3. Testing secure endpoint without login...")
+    new_client = APITester()
+    data = new_client.get_secure_data()
+    print(f"Secure endpoint without token: {data}")
 
 
 if __name__ == "__main__":

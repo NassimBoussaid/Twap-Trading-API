@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict
 from datetime import datetime
 
+
 class ExchangeBase(ABC):
 
     @abstractmethod
