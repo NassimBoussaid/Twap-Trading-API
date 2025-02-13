@@ -1,5 +1,6 @@
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, WebSocketDisconnect
+from starlette.exceptions import WebSocketException
 from starlette.websockets import WebSocket
 from typing import Dict, Set, Optional
 import asyncio
@@ -77,6 +78,16 @@ class ConnectionManager:
 
     async def handle_websocket(self, websocket: WebSocket):
         """Handles WebSocket messages for subscribing/unsubscribing to symbols."""
+        """try:
+            token_message = await websocket.receive_text()
+            token_data = json.loads(token_message)
+            token = token_data.get("token")
+            username = await verify_token(token)
+            print(f"{username} connected !")
+        except Exception as e:
+            print(f"Invalid token: {e}")
+            await websocket.close(code = 1008, reason="Invalid token")"""
+
         await self.connect(websocket)
 
         try:
@@ -171,6 +182,7 @@ manager = ConnectionManager()
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.handle_websocket(websocket)
+
 
 @asynccontextmanager
 async def lifespan():

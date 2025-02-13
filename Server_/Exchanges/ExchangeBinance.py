@@ -83,7 +83,7 @@ class ExchangeBinance(ExchangeBase):
             # Remove duplicate rows
             df.drop_duplicates(inplace=True)
             # Convert the timestamp column from milliseconds to datetime objects
-            df['Timestamp'] = pd.to_datetime(df['Timestamp'].astype(int), unit='ms')
+            df['Timestamp'] = pd.to_datetime(df['Timestamp'].astype(float), unit='ms')
             # Set the timestamp as the index
             df.set_index('Timestamp', inplace=True)
             # Convert to float (previously str)
