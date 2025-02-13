@@ -198,7 +198,7 @@ async def login(request: LoginRequest):
 
     user = database_api.retrieve_user_by_username(request.username)
     if not user:
-        raise HTTPException(status_code=401,detail="Invalid username")
+        raise HTTPException(status_code=401, detail="Invalid username")
 
     if user.password != request.password:
         raise HTTPException(status_code=401, detail="Invalid password")
