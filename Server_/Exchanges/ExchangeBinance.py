@@ -5,7 +5,7 @@ import websockets
 import aiohttp
 import json
 import pandas as pd
-from typing import Dict
+from typing import Dict, List, Tuple
 from datetime import datetime, timedelta
 
 class ExchangeBinance(ExchangeBase):
@@ -135,18 +135,17 @@ class ExchangeBinance(ExchangeBase):
         self.asks = {float(price): float(volume) for price, volume in asks}
         self.bids = {float(price): float(volume) for price, volume in bids}
 
-    def display_order_book(self, symbol: str, timestamp: str):
+    def display_order_book(self, symbol: str, timestamp: str,
+                           top_bids: List[Tuple[float, float]], top_asks: List[Tuple[float, float]]):
         """
         Display the top 10 levels of the order book for a given symbol.
 
         Args:
             symbol (str): Trading pair symbol (e.g., "BTCUSDT").
             timestamp (str): Current timestamp for when the order book was updated.
+            top_bids (List[Tuple[float, float]]): Best bids for the current order book.
+            top_asks (List[Tuple[float, float]]): Best asks for the current order book.
         """
-        # Sort and get the top 10 ask and bid prices
-        top_asks = sorted(self.asks.items())[:10]
-        top_bids = sorted(self.bids.items(), reverse=True)[:10]
-
         # Create a DataFrame to structure order book data
         current_order_book = pd.DataFrame({
             "Ask Price": [ask[0] for ask in top_asks],
@@ -188,11 +187,15 @@ class ExchangeBinance(ExchangeBase):
                     # Update local order book with received data
                     self.update_order_book(data["asks"], data["bids"])
 
+                    # Sort and get the top 10 ask and bid prices
+                    top_bids = sorted(self.bids.items(), key=lambda x: -x[0])
+                    top_asks = sorted(self.asks.items(), key=lambda x: x[0])
+
                     # Display order book if enabled, otherwise return data
                     if display:
-                        self.display_order_book(symbol, timestamp)
+                        self.display_order_book(symbol, timestamp, top_bids, top_asks)
                     else:
-                        yield {"bids": dict(self.bids), "asks": dict(self.asks)}
+                        yield {"bids": dict(top_bids), "asks": dict(top_asks)}
 
                     await asyncio.sleep(1)
 
@@ -218,9 +221,9 @@ async def main():
     Main function to initiate the order book streaming.
     """
     exchange = ExchangeBinance()
-    async for bids, asks in exchange.get_order_book("BTCUSDT"):
-        print("Top 10 Bids:", bids)
-        print("Top 10 Asks:", asks)
+    async for order_book in exchange.get_order_book("BTCUSDT", True):
+        print("Top 10 Bids:", order_book["bids"])
+        print("Top 10 Asks:", order_book["asks"])
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -2,6 +2,8 @@ from Server_.Exchanges.ExchangeBase import ExchangeBase
 import requests
 import asyncio
 import aiohttp
+import websockets
+import json
 import pandas as pd
 from typing import Dict
 from datetime import datetime, timedelta
@@ -130,12 +132,75 @@ class ExchangeKucoin(ExchangeBase):
 
             return df
 
+    async def get_order_book(self, symbol: str, display: bool = True) -> Dict[Dict, Dict]:
+        """
+        Retrieve order book data from Kucoin WebSocket stream.
+
+        Args:
+            symbol (str): Trading pair symbol (e.g., "BTCUSDT").
+            display (bool, optional): Whether to print the order book. Defaults to True.
+
+        Returns:
+            Dict[Dict, Dict]: Dictionary containing bid and ask prices.
+        """
+        # Correct symbol format
+        symbol_formatted = self.get_trading_pairs()[symbol]
+
+        subscribe_message = {
+            "id": str(int(datetime.utcnow().timestamp() * 1000)),
+            "type": "subscribe",
+            "topic": f"/spotMarket/level2Depth5:{symbol}",
+            "privateChannel": False,
+            "response": True
+        }
+
+        # WebSocket URL for retrieving real-time order book updates
+
+        try:
+            async with websockets.connect(self.KUCOIN_WS_URL) as websocket:
+                print(f"📶 Connecting to KuCoin WebSocket for {symbol}...")
+
+                # Send subscription request
+                await websocket.send(json.dumps(subscribe_message))
+
+                while True:
+                    try:
+                        response = await websocket.recv()
+                        data = json.loads(response)
+
+                        if "data" in data and "bids" in data["data"] and "asks" in data["data"]:
+                            bids = data["data"]["bids"][:10]  # Get top 10 bids
+                            asks = data["data"]["asks"][:10]  # Get top 10 asks
+                            timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+                            # Format order book
+                            order_book = pd.DataFrame({
+                                "Ask Price": [float(ask[0]) for ask in asks],
+                                "Ask Volume": [float(ask[1]) for ask in asks],
+                                "Bid Price": [float(bid[0]) for bid in bids],
+                                "Bid Volume": [float(bid[1]) for bid in bids],
+                            }, index=[f"Level {i + 1}" for i in range(10)])
+
+                            # Display order book
+                            print(f"\nOrder Book for {symbol.upper()} [{timestamp}]")
+                            print("=" * 60)
+                            print(order_book.to_string(index=True, float_format="{:.4f}".format))
+                            print("=" * 60)
+
+                        await asyncio.sleep(1)  # Update every second
+
+                    except Exception as e:
+                        print(f"⚠️ Error: {e}")
+                        break
+        except Exception as e:
+            print(f"WebSocket connection error: {e}")
+            await asyncio.sleep(1)
+
 async def main():
-    """
-    Main function to get trading pairs.
-    """
     exchange = ExchangeKucoin()
-    print(exchange.get_trading_pairs())
+    await exchange.get_order_book("BTCUSDT")
+        #print("Top 10 Bids:", bids)
+        #print("Top 10 Asks:", asks)
 
 if __name__ == "__main__":
     asyncio.run(main())

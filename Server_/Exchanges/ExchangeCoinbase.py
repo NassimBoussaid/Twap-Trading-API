@@ -7,7 +7,7 @@ import json
 import time
 import jwt
 import pandas as pd
-from typing import Dict
+from typing import Dict, List, Tuple
 from datetime import datetime, timedelta
 
 class ExchangeCoinbase(ExchangeBase):
@@ -193,18 +193,17 @@ class ExchangeCoinbase(ExchangeBase):
             else:
                 self.asks[price] = volume
 
-    def display_order_book(self, symbol: str, timestamp: str):
+    def display_order_book(self, symbol: str, timestamp: str,
+                           top_bids: List[Tuple[float, float]], top_asks: List[Tuple[float, float]]):
         """
         Display the top 10 levels of the order book for a given symbol.
 
         Args:
             symbol (str): Trading pair symbol (e.g., "BTCUSDT").
             timestamp (str): Current timestamp for when the order book was updated.
+            top_bids (Dict[float, Tuple[float, float]]): Best bids for the current order book.
+            top_asks (Dict[float, Tuple[float, float]]): Best asks for the current order book.
         """
-        # Sort and get the top 10 ask and bid prices
-        top_bids = sorted(self.bids.items(), key=lambda x: -x[0])[:10]
-        top_asks = sorted(self.asks.items(), key=lambda x: x[0])[:10]
-
         # Create a DataFrame to structure order book data
         current_order_book = pd.DataFrame({
             "Ask Price": [ask[0] for ask in top_asks],
@@ -276,7 +275,7 @@ class ExchangeCoinbase(ExchangeBase):
 
                             # Display order book if enabled, otherwise return data
                             if display:
-                                self.display_order_book(symbol_formatted, timestamp)
+                                self.display_order_book(symbol_formatted, timestamp, top_bids, top_asks)
                             else:
                                 yield {"bids": dict(top_bids), "asks": dict(top_asks)}
 
@@ -288,9 +287,9 @@ class ExchangeCoinbase(ExchangeBase):
 
 async def main():
     exchange = ExchangeCoinbase()
-    async for bids, asks in exchange.get_order_book("BTCUSDT"):
-        print("Top 10 Bids:", bids)
-        print("Top 10 Asks:", asks)
+    async for order_book in exchange.get_order_book("BTCUSDT", True):
+        print("Top 10 Bids:", order_book["bids"])
+        print("Top 10 Asks:", order_book["asks"])
 
 if __name__ == "__main__":
     asyncio.run(main())

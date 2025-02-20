@@ -1,5 +1,6 @@
 from Server_.Exchanges.ExchangeBinance import ExchangeBinance
 from Server_.Exchanges.ExchangeCoinbase import ExchangeCoinbase
+from Server_.Exchanges.ExchangeBybit import ExchangeBybit
 from datetime import datetime
 from typing import List, Dict
 import asyncio
@@ -124,10 +125,11 @@ async def main():
     """
     binance = ExchangeBinance()
     coinbase = ExchangeCoinbase()
+    bybit = ExchangeBybit()
 
-    multi_exchange = ExchangeMulti([binance, coinbase])
+    multi_exchange = ExchangeMulti([binance, coinbase, bybit])
 
-    async for aggregated_order_book in multi_exchange.aggregate_order_books("BTCUSDT", display=False):
+    async for aggregated_order_book in multi_exchange.aggregate_order_books("BTCUSDT", display=True):
         print("Aggregated Top 10 Bids:", aggregated_order_book['bids'])
         print("Aggregated Top 10 Asks:", aggregated_order_book['asks'])
 
