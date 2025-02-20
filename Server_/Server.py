@@ -1,8 +1,8 @@
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, WebSocketDisconnect,Query
+from fastapi import FastAPI, HTTPException, WebSocketDisconnect, Query, BackgroundTasks
 from starlette.exceptions import WebSocketException
 from starlette.websockets import WebSocket
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, List
 import asyncio
 import json
 from contextlib import asynccontextmanager
@@ -12,16 +12,20 @@ import os.path
 from sympy import jacobi_symbol
 from Server_.Database import *
 from Authentification.AuthentificationManager import *
+from Server_.TwapOrder import TwapOrder
 
 app = FastAPI(title="Twap-Trading-API")
+
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Twap-Trading-API"}
 
+
 @app.get("/exchanges")
 async def get_exchanges():
     return {"exchanges": list(EXCHANGE_MAPPING.keys())}
+
 
 @app.get("/{exchange}/symbols")
 async def get_symbols(exchange: str):
@@ -30,6 +34,7 @@ async def get_symbols(exchange: str):
     else:
         exchange_object = EXCHANGE_MAPPING[exchange]
         return {"symbols": list(exchange_object.get_trading_pairs().keys())}
+
 
 @app.get("/klines/{exchange}/{symbol}")
 async def get_historical_data(exchange: str, symbol: str, interval: str, start_time: str, end_time: str):
@@ -46,6 +51,7 @@ async def get_historical_data(exchange: str, symbol: str, interval: str, start_t
             klines_df = await exchange_object.get_klines_data(symbol, interval, start_time_dt, end_time_dt)
 
             return {"klines": klines_df.to_dict(orient="index")}
+
 
 class ConnectionManager:
     def __init__(self):
@@ -175,7 +181,39 @@ class ConnectionManager:
                     except:
                         pass
 
+
 manager = ConnectionManager()
+
+# Dictionnaire global pour suivre l'état des ordres TWAP
+orders: Dict[str, dict] = {}
+
+
+class TWAPOrderRequest(BaseModel):
+    token_id: str  # Identifiant unique fourni par le client
+    symbol: str  # Ex : "BTCUSDT" ou "BTC" selon vos conventions
+    side: str  # "buy" ou "sell"
+    total_quantity: float  # Quantité totale à exécuter
+    limit_price: float  # Prix limite (max pour buy, min pour sell)
+    duration_seconds: int  # Durée totale par défaut (si aucune fenêtre n'est précisée)
+    exchanges: List[str]  # Liste des exchanges à utiliser
+
+
+def update_order_state(twap):
+    """
+    Met à jour le dictionnaire global 'orders' avec l'état courant de l'objet TwapOrder.
+    """
+    total_executed = sum(lot["quantity"] for lot in twap.executions)
+    percentage_executed = (total_executed / twap.total_quantity) * 100 if twap.total_quantity > 0 else 0
+    orders[twap.token_id] = {
+        "status": twap.status,
+        "executions": twap.executions,
+        "percentage_executed": percentage_executed,
+        "vwap": twap.vwap,
+        "avg_execution_price": twap.avg_execution_price,
+        "lots_count": len(twap.executions),
+        "total_quantity_executed": total_executed
+    }
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -191,9 +229,9 @@ async def lifespan():
     for task in manager.broadcast_tasks.values():
         task.cancel()
 
+
 @app.post("/login", response_model=TokenResponse)
 async def login(request: LoginRequest):
-
     user = database_api.retrieve_user_by_username(request.username)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username")
@@ -204,6 +242,7 @@ async def login(request: LoginRequest):
     token = create_token(request.username)
     return {"access_token": token}
 
+
 @app.get("/secure")
 async def secure_endpoint(username: str = Depends(verify_token)):
     """Protected endpoint requires valid JWT"""
@@ -212,14 +251,16 @@ async def secure_endpoint(username: str = Depends(verify_token)):
         "timestamp": datetime.now().isoformat()
     }
 
+
 @app.post("/register", status_code=201)
 async def register(request: RegisterRequest):
     user = database_api.retrieve_user_by_username(request.username)
     if user:
         raise HTTPException(status_code=400, detail="Username already exists")
 
-    database_api.create_user(request.username,request.password)
+    database_api.create_user(request.username, request.password)
     return {"message": "User correctly registered"}
+
 
 @app.delete("/unregister")
 async def unregister(username: str = Depends(verify_token)):
@@ -231,7 +272,8 @@ async def unregister(username: str = Depends(verify_token)):
         raise HTTPException(status_code=403, detail="Admin cannot be unregistered")
 
     database_api.delete_user(username)
-    return {"message":"User successfully unregistered"}
+    return {"message": "User successfully unregistered"}
+
 
 @app.get("/users")
 async def get_users(username: str = Depends(verify_token)):
@@ -241,7 +283,55 @@ async def get_users(username: str = Depends(verify_token)):
 
     return {"users": database_api.retrieve_all_users()}
 
+
+@app.post("/orders/twap")
+async def submit_twap_order(
+        order: TWAPOrderRequest,
+        background_tasks: BackgroundTasks,
+        username: str = Depends(verify_token)
+):
+    if order.token_id in orders:
+        raise HTTPException(status_code=400, detail="Order with this token_id already exists")
+
+    # Créer l'objet métier TwapOrder
+    print("hhhhhh")
+    twap = TwapOrder(
+        token_id=order.token_id,
+        symbol=order.symbol,
+        side=order.side,
+        total_quantity=order.total_quantity,
+        limit_price=order.limit_price,
+        duration_seconds=order.duration_seconds,
+        exchanges=order.exchanges,
+    )
+
+    # Stocker l'état initial dans le dictionnaire global orders
+    orders[order.token_id] = {
+        "status": twap.status,
+        "executions": twap.executions,
+        "percentage_executed": 0,
+        "vwap": 0,
+        "avg_execution_price": None,
+        "lots_count": 0
+    }
+
+    # Lancer la méthode run() en tâche de fond avec le callback d'update
+    background_tasks.add_task(twap.run, update_order_state)
+
+    return {"message": "TWAP order accepted", "token_id": order.token_id}
+
+
+@app.get("/orders/{token_id}")
+async def get_order_status(token_id: str, username: str = Depends(verify_token)):
+    # Ici on pourrait récupérer l'état depuis une base de données ou un repository.
+    order_state = orders.get(token_id)  # à implémenter avec la BDD de Nico
+    if not order_state:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order_state
+
+
 if __name__ == "__main__":
     # Launch server here in local on port 8000
     import uvicorn
+
     uvicorn.run("Server:app", host="0.0.0.0", port=8000, reload=True)

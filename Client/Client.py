@@ -3,7 +3,9 @@ import websockets
 import json
 import requests
 import time
+import uuid
 from typing import Dict, Any, Optional, Set
+
 
 class APITester:
     """
@@ -355,6 +357,90 @@ class APITester:
         if self.websocket:
             await self.websocket.close()
 
+    def place_twap_order(self) -> str:
+        """
+        Invite l'utilisateur à saisir les paramètres de l'ordre TWAP,
+        incluant éventuellement des fenêtres personnalisées.
+        Envoie l'ordre au serveur et retourne le token_id généré.
+        """
+        print("\n=== Passer un ordre TWAP ===")
+        side_input = input("Entrez le sens (B pour Buy, S pour Sell) : ").strip().upper()
+        side = "buy" if side_input == "B" else "sell"
+        crypto = input("Entrez la crypto (ex: BTCUSDT) : ").strip().upper()
+        quantity = float(input("Entrez la quantité : ").strip())
+        limit_price = float(input("Entrez le prix limite : ").strip())
+        duration = int(input("Entrez la durée d'exécution par défaut (en secondes) : ").strip())
+        exchanges_input = input("Entrez un exchange (par défaut Binance) : ").strip()
+
+        if exchanges_input:
+            exchanges = [ex.strip() for ex in exchanges_input.split(",")]
+        else:
+            exchanges = ["Binance"]
+
+        # Générer un token_id unique
+        token_id = str(uuid.uuid4())
+
+        order_payload = {
+            "token_id": token_id,
+            "symbol": crypto,
+            "side": side,
+            "total_quantity": quantity,
+            "limit_price": limit_price,
+            "duration_seconds": duration,
+            "exchanges": exchanges,
+        }
+
+        headers = {"Authorization": f"Bearer {self.token}"}
+        response = requests.post(f"{self.base_url}/orders/twap", json=order_payload, headers=headers)
+
+        if response.status_code != 200:
+            print("Erreur lors de la soumission de l'ordre TWAP :", response.text)
+            return ""
+
+        print("Ordre TWAP soumis avec succès. Token ID :", token_id)
+        return token_id
+
+    def poll_order_status(self, token_id: str):
+        """
+        Interroge périodiquement l'endpoint /orders/{token_id} pour afficher :
+          - Le pourcentage d'exécution
+          - Le VWAP réalisé jusqu'à présent
+          - Les détails de chaque lot exécuté (timestamp, quantité, prix)
+        Une fois l'ordre terminé, affiche le nombre total de lots et le prix moyen d'exécution.
+        """
+        headers = {"Authorization": f"Bearer {self.token}"}
+        print("\nSuivi de l'exécution de l'ordre TWAP :")
+
+        while True:
+            response = requests.get(f"{self.base_url}/orders/{token_id}", headers=headers)
+            if response.status_code != 200:
+                print("Erreur lors de la récupération du statut de l'ordre :", response.text)
+                break
+
+            order_status = response.json()
+            percentage = order_status.get("percentage_executed", 0)
+            status = order_status.get("status", "inconnu")
+            vwap = order_status.get("vwap", 0)
+            print(f"{80 * "="},\nStatut : {status} - Exécuté : {percentage:.2f}% - VWAP : {vwap:.4f}")
+
+            executions = order_status.get("executions", [])
+            if executions:
+                print("Détails des lots exécutés :")
+                for lot in executions:
+                    print(f"  - {lot['timestamp']} : {lot['quantity']} à {lot['price']}")
+
+            if status == "completed":
+                lots_count = order_status.get("lots_count", len(executions))
+                avg_price = order_status.get("avg_execution_price", 0)
+                total_quantity = order_status.get("total_quantity_executed", sum(lot["quantity"] for lot in executions))
+                percent_exec = order_status.get("percentage_executed", 0)
+                print(
+                    f"Ordre terminé : {lots_count} lots exécutés, quantité totale: {total_quantity} ({percent_exec:.2f}"
+                    f"% de l'ordre), prix moyen: {avg_price:.4f}€")
+
+                break
+            time.sleep(1)
+
 
 async def main():
     """
@@ -432,9 +518,17 @@ async def main():
         await tester.cleanup()
 
     # Test the API login.
-    tester.login("nicolas", "couturaud123")
+    tester.login("admin", "admin123")
     # Test accessing a secure endpoint.
     tester.get_secure_data()
+
+    # TWAP
+    token_id = tester.place_twap_order()
+    if token_id:
+        tester.poll_order_status(token_id=token_id)
+    else:
+        print("La soumission de l'ordre a échoué.")
+
 
 if __name__ == "__main__":
     # Run the main function using asyncio.

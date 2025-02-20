@@ -8,10 +8,12 @@ import pandas as pd
 from typing import Dict, List, Tuple
 from datetime import datetime, timedelta
 
+
 class ExchangeBinance(ExchangeBase):
     """
     Class to interact with Binance API for retrieving trading data and order book updates.
     """
+
     def __init__(self):
         """
         Initialize Binance API endpoints and required data structures.
@@ -203,6 +205,7 @@ class ExchangeBinance(ExchangeBase):
             print(f"WebSocket connection error: {e}")
             await asyncio.sleep(1)
 
+
 async def run_all_tasks(exchange):
     """
     Run multiple asynchronous tasks for fetching historical data and order book updates.
@@ -224,6 +227,7 @@ async def main():
     async for order_book in exchange.get_order_book("BTCUSDT", True):
         print("Top 10 Bids:", order_book["bids"])
         print("Top 10 Asks:", order_book["asks"])
+
 
 if __name__ == "__main__":
     asyncio.run(main())

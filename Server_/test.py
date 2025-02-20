@@ -4,6 +4,7 @@ import json
 import pandas as pd
 from datetime import datetime
 
+
 async def test_websocket():
     uri = "ws://localhost:8000/ws"
 
@@ -37,9 +38,10 @@ async def test_websocket():
                 print(f"Order Book for BTCUSDT")
                 print(f"Updating Order Book... [{timestamp}]")
                 print()
-                print("="*80)
+                print("=" * 80)
                 print(current_order_book.to_string(index=True, float_format="{:.4f}".format))
-                print("="*80)
+                print("=" * 80)
 
 
-asyncio.run(test_websocket())
+if __name__ == "__main__":
+    asyncio.run(test_websocket())

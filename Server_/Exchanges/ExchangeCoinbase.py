@@ -10,10 +10,12 @@ import pandas as pd
 from typing import Dict, List, Tuple
 from datetime import datetime, timedelta
 
+
 class ExchangeCoinbase(ExchangeBase):
     """
     Class to interact with Coinbase API for retrieving trading data and order book updates.
     """
+
     def __init__(self):
         """
         Initialize Coinbase API endpoints and required data structures.
@@ -87,7 +89,8 @@ class ExchangeCoinbase(ExchangeBase):
         response = requests.get(f"{self.COINBASE_REST_URL}/products")
         data = response.json()
         # Extract and return a dictionary mapping trading pair symbols
-        return {symbol["id"].replace('-', ''): symbol["id"] for symbol in data}  # Coinbase utilise 'id' pour les symboles
+        return {symbol["id"].replace('-', ''): symbol["id"] for symbol in
+                data}  # Coinbase utilise 'id' pour les symboles
 
     async def get_klines_data(self, symbol: str, interval: str, start_time: datetime,
                               end_time: datetime, limit: int = 300) -> pd.DataFrame:
@@ -217,9 +220,9 @@ class ExchangeCoinbase(ExchangeBase):
         print(f"Order Book for {symbol.upper()}")
         print(f"Updating Order Book... [{timestamp}]")
         print()
-        print("="*60)
+        print("=" * 60)
         print(current_order_book.to_string(index=True, float_format="{:.4f}".format))
-        print("="*60)
+        print("=" * 60)
 
     async def get_order_book(self, symbol: str, display: bool = True) -> Dict[Dict, Dict]:
         """
@@ -290,6 +293,7 @@ async def main():
     async for order_book in exchange.get_order_book("BTCUSDT", True):
         print("Top 10 Bids:", order_book["bids"])
         print("Top 10 Asks:", order_book["asks"])
+
 
 if __name__ == "__main__":
     asyncio.run(main())
