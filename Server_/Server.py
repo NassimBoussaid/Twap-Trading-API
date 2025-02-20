@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocketDisconnect,Query
 from starlette.exceptions import WebSocketException
 from starlette.websockets import WebSocket
 from typing import Dict, Set, Optional
@@ -79,14 +79,12 @@ class ConnectionManager:
     async def handle_websocket(self, websocket: WebSocket):
         """Handles WebSocket messages for subscribing/unsubscribing to symbols."""
         """try:
-            token_message = await websocket.receive_text()
-            token_data = json.loads(token_message)
-            token = token_data.get("token")
             username = await verify_token(token)
             print(f"{username} connected !")
         except Exception as e:
             print(f"Invalid token: {e}")
-            await websocket.close(code = 1008, reason="Invalid token")"""
+            await websocket.close(code = 1008, reason="Invalid token")
+            return"""
 
         await self.connect(websocket)
 
@@ -220,8 +218,28 @@ async def register(request: RegisterRequest):
     if user:
         raise HTTPException(status_code=400, detail="Username already exists")
 
-    database_api.create_user(request.username,request.password, "user")
+    database_api.create_user(request.username,request.password)
     return {"message": "User correctly registered"}
+
+@app.delete("/unregister")
+async def unregister(username: str = Depends(verify_token)):
+    user = database_api.retrieve_user_by_username(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.role == "admin":
+        raise HTTPException(status_code=403, detail="Admin cannot be unregistered")
+
+    database_api.delete_user(username)
+    return {"message":"User successfully unregistered"}
+
+@app.get("/users")
+async def get_users(username: str = Depends(verify_token)):
+    user = database_api.retrieve_user_by_username(username)
+    if not user or user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    return {"users": database_api.retrieve_all_users()}
 
 if __name__ == "__main__":
     # Launch server here in local on port 8000
