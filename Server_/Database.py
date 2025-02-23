@@ -1,10 +1,13 @@
-﻿from sqlalchemy import create_engine, Column, String, Float, Integer, ForeignKey, PrimaryKeyConstraint, Enum, DateTime, \
+﻿import datetime
+
+from sqlalchemy import create_engine, Column, String, Float, Integer, ForeignKey, PrimaryKeyConstraint, Enum, DateTime, \
     func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-
+from fastapi import HTTPException
 from passlib.context import CryptContext
+from typing import Dict, List
 
 DATABASE_URL = "sqlite:///api_database.db"
 
@@ -27,12 +30,13 @@ class User(Base):
 
 class Twap(Base):
     __tablename__ = "twap_orders"
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True,autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     symbol = Column(String, nullable=False)
     side = Column(String, nullable=False)
-    quantity = Column(Float, nullable=False)
-    price = Column(Float, nullable=False)
+    avg_executed_price = Column(Float,nullable=False)
+    executed_quantity = Column(Float, nullable=False)
+    duration = Column(Float,nullable=False)
     status = Column(Enum("pending", "executing", "completed", "canceled", name="order_status_enum"), nullable=False,
                     default="pending")
     created_at = Column(DateTime, default=func.now())
@@ -42,10 +46,11 @@ class TwapExecution(Base):
     __tablename__ = "twap_executions"
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_id = Column(Integer, ForeignKey("twap_orders.id", ondelete="CASCADE"), nullable=False)
-    executed_quantity = Column(Float, nullable=False)  # Quantité exécutée à chaque intervalle
-    execution_price = Column(Float, nullable=False)
-    exchange = Column(String, nullable=False)
-    timestamp = Column(DateTime, default=func.now())
+    symbol = Column(String, nullable=False)
+    side = Column(String, nullable=False)
+    quantity = Column(Float, nullable=False)
+    price = Column(Float, nullable=False)
+    timestamp = Column(String, nullable=False)
 
 
 # Créer les tables dans la base de données
@@ -98,84 +103,106 @@ class Database:
         finally:
             session.close()
 
-    def add_twap_order(self, user_id: int, symbol: str, side: str, quantity: float, price: float):
+
+    def add_order_executions(self, order_id : str,symbol: str,executions: List[Dict]):
         session = self.SessionLocal()
         try:
+            for execution in executions:
+                new_order = TwapExecution(
+                    order_id=order_id,
+                    symbol=symbol,
+                    side=execution["side"],
+                    quantity=execution["quantity"],
+                    price=execution["price"],
+                    timestamp=execution.get("timestamp")
+                )
+                session.add(new_order)
+
+            session.commit()
+            return "Orders successfully added"
+        except SQLAlchemyError as e:
+            session.rollback()
+            raise Exception(f"Error adding TWAP orders: {e}")
+        finally:
+            session.close()
+
+    def add_order(self,username: str,token_id:str,symbol:str,side:str,executed_price:float,executed_quantity:float,executed_duration:float,status:str):
+        session = self.SessionLocal()
+        try:
+            existing_order = session.query(Twap).filter(Twap.id == token_id).first()
+            user = self.retrieve_user_by_username(username)
+            if existing_order:
+                raise HTTPException(status_code=400, detail="Order ID already exists")
             new_order = Twap(
-                user_id=user_id,
+                id=token_id,
+                user_id=user.id,
                 symbol=symbol,
                 side=side,
-                quantity=quantity,
-                price=price,
-                status="pending",
-                created_at=func.now()
+                avg_executed_price = executed_price,
+                executed_quantity=executed_quantity,
+                duration=executed_duration,
+                status=status,
+                created_at = func.now()
             )
             session.add(new_order)
             session.commit()
-            session.refresh(new_order)
-            return new_order
-        except SQLAlchemyError as e:
+        except Exception as e:
             session.rollback()
-            raise Exception(f"Error adding TWAP order: {e}")
+            raise HTTPException(status_code=500, detail=f"Error creating order: {e}")
+        finally:
+            session.close()
 
-    def get_twap_orders(self, user_id: int):
-        session = self.SessionLocal()
-        return session.query(Twap).filter(Twap.user_id == user_id).all()
-
-    def get_twap_order_by_id(self, order_id: int):
-        session = self.SessionLocal()
-        order = session.query(Twap).filter(Twap.id == order_id).first()
-        if not order:
-            raise Exception(f"Order ID {order_id} not found")
-        return order
-
-    def update_twap_order_status(self, order_id: int, new_status: str):
-        session = self.SessionLocal()
-        valid_status = ["pending", "executing", "completed", "canceled"]
-        if new_status not in valid_status:
-            raise ValueError(f"Invalid status '{new_status}', must be one of {valid_status}")
-
-        order = session.query(Twap).filter(Twap.id == order_id).first()
-        if not order:
-            raise Exception(f"Order ID {order_id} not found")
-
-        order.status = new_status
-        session.commit()
-        session.refresh(order)
-        return order
-
-    def close_twap_order(self, order_id: int, canceled: bool = False):
-        session = self.SessionLocal()
-        order = session.query(Twap).filter(Twap.id == order_id).first()
-        if not order:
-            raise Exception(f"Order ID {order_id} not found")
-
-        order.status = "canceled" if canceled else "completed"
-        session.commit()
-        session.refresh(order)
-        return order
-
-    def add_twap_execution(self, order_id: int, executed_quantity: float, execution_price: float, exchange: str):
+    def get_orders(self, user_id: int = None,order_id : str = None,order_status:str = None):
         session = self.SessionLocal()
         try:
-            execution = TwapExecution(
-                order_id=order_id,
-                executed_quantity=executed_quantity,
-                execution_price=execution_price,
-                exchange=exchange,
-                timestamp=func.now()
-            )
-            session.add(execution)
-            session.commit()
-            session.refresh(execution)
-            return execution
-        except SQLAlchemyError as e:
-            session.rollback()
-            raise Exception(f"Error adding TWAP execution: {e}")
+            query = session.query(Twap)
+            if user_id:
+                query = query.filter(Twap.user_id == user_id)
+            if order_id:
+                query = query.filter(Twap.id == order_id)
+            if order_status:
+                query = query.filter(Twap.status == order_status)
+            orders = query.all()
+            results = []
+            for order in orders:
+                results.append({
+                    "order_id": order.id,
+                    "user_id":order.user_id,
+                    "symbol": order.symbol,
+                    "side":order.side,
+                    "duration":order.duration,
+                    "status":order.status,
+                    "created_at":order.created_at
+                })
+            return results
+        finally:
+            session.close()
 
-    def get_twap_executions(self, order_id: int):
+    def get_orders_executions(self,order_id : str = None,symbol: str = None, side: str = None):
         session = self.SessionLocal()
-        return session.query(TwapExecution).filter(TwapExecution.order_id == order_id).all()
+        try:
+            query = session.query(TwapExecution)
+            if symbol:
+                query = query.filter(TwapExecution.symbol == symbol)
+            if order_id:
+                query = query.filter(TwapExecution.id == order_id)
+            if side:
+                query = query.filter(TwapExecution.side == side)
+            executions = query.all()
+            results = []
+            for execution in executions:
+                results.append({
+                    "id" : execution.id,
+                    "order_id": execution.order_id,
+                    "symbol": execution.symbol,
+                    "side":execution.side,
+                    "quantity":execution.quantity,
+                    "price":execution.price,
+                    "timestamp":execution.timestamp
+                })
+            return results
+        finally:
+            session.close()
 
 
 database_api = Database()

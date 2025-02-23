@@ -297,6 +297,7 @@ async def submit_twap_order(
     print("hhhhhh")
     twap = TwapOrder(
         token_id=order.token_id,
+        username=username,
         symbol=order.symbol,
         side=order.side,
         total_quantity=order.total_quantity,

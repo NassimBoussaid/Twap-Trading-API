@@ -1,6 +1,8 @@
 ﻿from datetime import datetime
 import asyncio
 from typing import Dict, List, Set, Optional
+
+from Server_.Database import database_api
 from Server_.Exchanges.ExchangeMulti import ExchangeMulti
 from Server_.Exchanges import EXCHANGE_MAPPING
 
@@ -9,6 +11,7 @@ class TwapOrder:
     def __init__(
             self,
             token_id: str,
+            username:str,
             symbol: str,
             side: str,
             total_quantity: float,
@@ -16,6 +19,7 @@ class TwapOrder:
             duration_seconds: int,
             exchanges: List[str],
     ):
+        self.username = username
         self.token_id = token_id
         self.symbol = symbol
         self.side = side.lower()  # "buy" ou "sell"
@@ -75,7 +79,7 @@ class TwapOrder:
 
         return executions
 
-    async def run(self, update_callback=None):
+    async def run(self,update_callback=None):
         """
         Exécute l'ordre TWAP.
         - Si des fenêtres personnalisées sont définies, on exécute chaque fenêtre successivement,
@@ -113,5 +117,9 @@ class TwapOrder:
 
         self.avg_execution_price = total_cost / total_executed if total_executed > 0 else 0
         self.status = "completed"
+        pourcentage_quantity = total_executed / self.total_quantity * 100
+        database_api.add_order_executions(self.token_id,self.symbol,self.executions)
+        database_api.add_order(self.username,self.token_id,self.symbol,self.side,self.avg_execution_price,total_executed,self.duration_seconds,self.status)
+
         if update_callback:
             update_callback(self)

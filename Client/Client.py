@@ -158,6 +158,38 @@ class APITester:
             print(f"❌ Failed to login: {e}")
             return False
 
+    def register(self, username: str, password: str) -> bool:
+        """
+        Register a new user in the API.
+
+        Args:
+            username (str): Username for registration.
+            password (str): Password for registration.
+
+        Returns:
+            bool: True if registration is successful, False otherwise.
+        """
+        try:
+            print("\nTesting API Registration...")
+            response = requests.post(
+                f"{self.base_url}/register",
+                json={"username": username, "password": password}
+            )
+
+            if response.status_code == 201:
+                print("✅ Registration successful!")
+                return True
+
+            print(f"❌ Registration failed: {response.json().get('detail', 'Unknown error')}")
+            return False
+
+        except requests.exceptions.ConnectionError:
+            print("❌ Failed: Could not connect to server. Is it running?")
+            return False
+        except Exception as e:
+            print(f"❌ Failed to register: {e}")
+            return False
+
     def get_secure_data(self):
         """
         Access a protected endpoint using the JWT token.
@@ -521,6 +553,8 @@ async def main():
     tester.login("admin", "admin123")
     # Test accessing a secure endpoint.
     tester.get_secure_data()
+
+    tester.register("new_user", "new_password")
 
     # TWAP
     token_id = tester.place_twap_order()

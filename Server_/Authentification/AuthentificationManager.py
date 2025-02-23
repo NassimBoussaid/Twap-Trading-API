@@ -32,6 +32,16 @@ def create_token(username: str) -> str:
         algorithm="HS256"
     )
 
+def get_current_user_id(credentials : HTTPAuthorizationCredentials = Depends(security)):
+    """ Extrait l'user_id du token JWT """
+    token = credentials.credentials
+    payload = PyJWT.decode(token,SECRET_KEY,algorithms=["HS256"])
+    user_id: int = payload.get("user_id")
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Utilisateur non authentifié")
+    return user_id
+
+
 async def verify_token(credentials : HTTPAuthorizationCredentials = Depends(security)):
     """Verify JWT Token"""
     token = credentials.credentials
