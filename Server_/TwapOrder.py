@@ -117,9 +117,8 @@ class TwapOrder:
 
         self.avg_execution_price = total_cost / total_executed if total_executed > 0 else 0
         self.status = "completed"
-        pourcentage_quantity = total_executed / self.total_quantity * 100
         database_api.add_order_executions(self.token_id,self.symbol,self.executions)
-        database_api.add_order(self.username,self.token_id,self.symbol,self.side,self.avg_execution_price,total_executed,self.duration_seconds,self.status)
+        database_api.add_order(self.username,self.token_id,self.symbol,self.exchanges[0],self.side,self.avg_execution_price,total_executed,self.duration_seconds,self.status)
 
         if update_callback:
             update_callback(self)

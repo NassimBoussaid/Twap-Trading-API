@@ -33,6 +33,7 @@ class Twap(Base):
     id = Column(Integer, primary_key=True,autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     symbol = Column(String, nullable=False)
+    exchange = Column(String, nullable=False)
     side = Column(String, nullable=False)
     avg_executed_price = Column(Float,nullable=False)
     executed_quantity = Column(Float, nullable=False)
@@ -126,7 +127,7 @@ class Database:
         finally:
             session.close()
 
-    def add_order(self,username: str,token_id:str,symbol:str,side:str,executed_price:float,executed_quantity:float,executed_duration:float,status:str):
+    def add_order(self,username: str,token_id:str,symbol:str,exchange:str,side:str,executed_price:float,executed_quantity:float,executed_duration:float,status:str):
         session = self.SessionLocal()
         try:
             existing_order = session.query(Twap).filter(Twap.id == token_id).first()
@@ -137,6 +138,7 @@ class Database:
                 id=token_id,
                 user_id=user.id,
                 symbol=symbol,
+                exchange = exchange,
                 side=side,
                 avg_executed_price = executed_price,
                 executed_quantity=executed_quantity,
