@@ -1,3 +1,5 @@
+from jwt import PyJWT
+
 from twap_trading_api.Server_.Exchanges.ExchangeBase import ExchangeBase
 import requests
 import websockets
@@ -5,7 +7,7 @@ import asyncio
 import aiohttp
 import json
 import time
-import jwt as jw
+import jwt
 import pandas as pd
 from typing import Dict, List, Tuple
 from datetime import datetime, timedelta
@@ -54,7 +56,7 @@ class ExchangeCoinbase(ExchangeBase):
         private_key = self.api_secret.replace('\n', '\n').strip()
 
         # Encode the JWT using ES256 algorithm with the private key
-        token = jw.encode(payload, private_key, algorithm='ES256')
+        token = jwt.encode(payload, private_key, algorithm='ES256')
 
         return token
 
