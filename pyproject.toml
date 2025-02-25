@@ -25,6 +25,7 @@ websockets = "^15.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
+pytest_asyncio = "^0.25.3"
 setuptools = "^65.5.0"
 
 [tool.pytest.ini_options]
