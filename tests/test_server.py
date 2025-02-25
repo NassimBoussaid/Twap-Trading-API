@@ -139,7 +139,7 @@ async def test_subscribe():
 
             # Wait for an order book update
             try:
-                message = await asyncio.wait_for(websocket.recv(), timeout=10.0)
+                message = await asyncio.wait_for(websocket.recv(), timeout=5.0)
                 data = json.loads(message)
                 assert data.get("type") == "order_book_update", \
                     f"❌ Expected 'type' to be 'order_book_update', got {data}"
