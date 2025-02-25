@@ -453,7 +453,7 @@ class APITester:
             percentage = order_status.get("percentage_executed", 0)
             status = order_status.get("status", "inconnu")
             vwap = order_status.get("vwap", 0)
-            print(f"{80 * "="},\nStatut : {status} - Exécuté : {percentage:.2f}% - VWAP : {vwap:.4f}")
+            print(f"{80},\nStatut : {status} - Exécuté : {percentage:.2f}% - VWAP : {vwap:.4f}")
 
             executions = order_status.get("executions", [])
             if executions:

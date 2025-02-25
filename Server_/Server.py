@@ -1,17 +1,13 @@
-from datetime import datetime
-from fastapi import FastAPI, HTTPException, WebSocketDisconnect, Query, BackgroundTasks
-from starlette.exceptions import WebSocketException
+from fastapi import FastAPI, WebSocketDisconnect, BackgroundTasks
 from starlette.websockets import WebSocket
-from typing import Dict, Set, Optional, List
+from typing import Set, Optional
 import asyncio
 import json
 from contextlib import asynccontextmanager
 from Server_.Exchanges.ExchangeMulti import ExchangeMulti
 from Server_.Exchanges import EXCHANGE_MAPPING
-import os.path
-from sympy import jacobi_symbol
 from Server_.Database import *
-from Authentification.AuthentificationManager import *
+from Server_.Authentification.AuthentificationManager import *
 from Server_.TwapOrder import TwapOrder
 
 app = FastAPI(title="Twap-Trading-API")
