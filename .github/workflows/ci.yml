@@ -49,10 +49,6 @@ jobs:
       run: |
         poetry install
 
-    - name: Run database migrations
-      run: |
-        poetry run alembic upgrade head
-
     - name: Start API server
       run: |
         poetry run uvicorn twap_trading_api.Server_.Server:app --host 0.0.0.0 --port 8000 --reload &
