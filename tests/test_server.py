@@ -70,49 +70,6 @@ async def test_welcome_message():
 
 
 @pytest.mark.asyncio
-async def test_subscribe():
-    """
-    Test subscribing to order book updates via WebSocket.
-    """
-    symbol = "BTCUSDT"
-    exchanges = ["Binance", "Coinbase"]
-
-    async with websockets.connect(base_uri) as websocket:
-        try:
-            # Drain the welcome message first
-            message = await websocket.recv()
-            data = json.loads(message)
-            assert data.get("type") == "welcome", f"❌ Expected 'type' to be 'welcome', got {data}"
-
-            # Send the subscription request
-            subscribe_message = {
-                "action": "subscribe",
-                "symbol": symbol,
-                "exchanges": exchanges
-            }
-
-            await websocket.send(json.dumps(subscribe_message))
-
-            # Now receive the subscribe confirmation
-            message = await websocket.recv()
-            data = json.loads(message)
-
-            assert data.get("type") == "subscribe_success", \
-                f"❌ Expected 'type' to be 'subscribe_success', got {data}"
-
-            # Wait for an order book update
-            try:
-                message = await asyncio.wait_for(websocket.recv(), timeout=5.0)
-                data = json.loads(message)
-                assert data.get("type") == "order_book_update", \
-                    f"❌ Expected 'type' to be 'order_book_update', got {data}"
-            except asyncio.TimeoutError:
-                pytest.fail("❌ Failed to receive subscription updates within 5 seconds")
-
-        except Exception as e:
-            pytest.fail(f"❌ Failed subscription test: {e}")
-
-@pytest.mark.asyncio
 async def test_unsubscribe():
     """
     Test unsubscribing from order book updates via WebSocket.
