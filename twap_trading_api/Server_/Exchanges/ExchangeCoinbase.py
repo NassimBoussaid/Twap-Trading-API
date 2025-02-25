@@ -5,7 +5,7 @@ import asyncio
 import aiohttp
 import json
 import time
-import jwt
+import jwt as jw
 import pandas as pd
 from typing import Dict, List, Tuple
 from datetime import datetime, timedelta
@@ -54,7 +54,7 @@ class ExchangeCoinbase(ExchangeBase):
         private_key = self.api_secret.replace('\n', '\n').strip()
 
         # Encode the JWT using ES256 algorithm with the private key
-        token = jwt.encode(payload, private_key, algorithm='ES256')
+        token = jw.encode(payload, private_key, algorithm='ES256')
 
         return token
 
