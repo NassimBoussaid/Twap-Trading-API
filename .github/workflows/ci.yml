@@ -15,16 +15,6 @@ jobs:
       matrix:
         python-version: ["3.9"]
 
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_USER: testuser
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: testdb
-        ports:
-          - 5432:5432
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
