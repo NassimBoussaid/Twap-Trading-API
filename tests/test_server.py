@@ -44,14 +44,8 @@ def test_klines_endpoint():
     """
     Test the klines endpoint with query parameters.
     """
-    params = {
-        "interval": "1d",
-        "start_time": "2025-02-01T00:00:00",
-        "end_time": "2025-02-01T01:00:00"
-    }
-    response = requests.get(f"{base_url}/klines/Binance/BTCUSDT", params=params)
-    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
-
+    endpoint = "/klines/Binance/BTCUSDT"
+    expected_status = 200
     expected_data = {
         "klines": {
             "2025-02-01T00:00:00": {
@@ -63,9 +57,29 @@ def test_klines_endpoint():
             }
         }
     }
-    data = response.json()
-    assert "klines" in data, "Missing 'klines' key in response"
-    assert data == expected_data, f"Expected {expected_data}, got {data}"
+    error_message = "The klines endpoint should return a list of dictionaries with historical data"
+    params = {
+        "interval": "1d",
+        "start_time": "2025-02-01T00:00:00",
+        "end_time": "2025-02-01T01:00:00"
+    }
+
+    try:
+        # Build URL with query parameters if provided
+        response = requests.get(f"{base_url}{endpoint}", params=params)
+
+        # Validate the HTTP status code
+        assert response.status_code == expected_status, f"Expected {expected_status}, got {response.status_code}"
+
+        # Validate the JSON response if expected data is provided
+        data = response.json()
+        assert "klines" in data, "Missing 'klines' key in response"
+        assert data == expected_data, f"Expected {expected_data}, got {data}"
+
+    except requests.exceptions.ConnectionError:
+        pytest.fail("❌ Failed: Could not connect to server. Is it running?")
+    except Exception as e:
+        pytest.fail(f"❌ Failed: Unexpected error: {e}")
 
 @pytest_asyncio.fixture
 async def websocket_connection():
