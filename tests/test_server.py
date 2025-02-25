@@ -19,6 +19,12 @@ def test_root_endpoint():
     data = response.json()
     assert data == expected_data, f"Expected {expected_data}, got {data}"
 
+def test_symbols_endpoint():
+    """
+    Test the symbols endpoint.
+    """
+    response = requests.get(f"{base_url}/Binance/symbols")
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
 
 def test_exchanges_endpoint():
     """
@@ -30,14 +36,6 @@ def test_exchanges_endpoint():
     expected_data = {"exchanges": ["Binance", "Bybit", "Coinbase", "Kucoin"]}
     data = response.json()
     assert data == expected_data, f"Expected {expected_data}, got {data}"
-
-
-def test_symbols_endpoint():
-    """
-    Test the symbols endpoint.
-    """
-    response = requests.get(f"{base_url}/Binance/symbols")
-    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
 
 
 def test_klines_endpoint():
