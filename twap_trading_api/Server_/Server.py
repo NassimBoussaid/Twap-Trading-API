@@ -4,11 +4,11 @@ from typing import Set, Optional
 import asyncio
 import json
 from contextlib import asynccontextmanager
-from Server_.Exchanges.ExchangeMulti import ExchangeMulti
-from Server_.Exchanges import EXCHANGE_MAPPING
-from Server_.Database import *
-from Server_.Authentification.AuthentificationManager import *
-from Server_.TwapOrder import TwapOrder
+from twap_trading_api.Server_.Exchanges.ExchangeMulti import ExchangeMulti
+from twap_trading_api.Server_.Exchanges import EXCHANGE_MAPPING
+from twap_trading_api.Server_.Database import *
+from twap_trading_api.Server_.Authentification.AuthentificationManager import *
+from twap_trading_api.Server_.TwapOrder import TwapOrder
 
 app = FastAPI(title="Twap-Trading-API")
 

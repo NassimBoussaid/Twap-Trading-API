@@ -1,7 +1,7 @@
-from Server_.Exchanges.ExchangeBinance import ExchangeBinance
-from Server_.Exchanges.ExchangeCoinbase import ExchangeCoinbase
-from Server_.Exchanges.ExchangeBybit import ExchangeBybit
-from Server_.Exchanges.ExchangeKucoin import ExchangeKucoin
+from twap_trading_api.Server_.Exchanges.ExchangeBinance import ExchangeBinance
+from twap_trading_api.Server_.Exchanges.ExchangeCoinbase import ExchangeCoinbase
+from twap_trading_api.Server_.Exchanges.ExchangeBybit import ExchangeBybit
+from twap_trading_api.Server_.Exchanges.ExchangeKucoin import ExchangeKucoin
 from datetime import datetime
 from typing import List, Dict
 import asyncio
