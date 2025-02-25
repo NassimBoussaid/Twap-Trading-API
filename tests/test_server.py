@@ -241,9 +241,11 @@ def test_register():
     )
 
     if response.status_code == 201:
-        pytest.fail("Unexpected success! Registration should fail.")
-    else:
+        pytest.fail("Unexpected success! Registration should fail on duplicate users.")
+    elif response.status_code == 400:
         assert True
+    else:
+        pytest.fail(f"Unexpected error: {response.status_code}")
 
 
 def test_get_secure_data():
@@ -253,7 +255,7 @@ def test_get_secure_data():
     # Login to obtain a token
     login_response = requests.post(
         f"{base_url}/login",
-        json={"username": "admin", "password": "admin123"}
+        json={"username": "new_user", "password": "new_password"}
     )
 
     if login_response.status_code != 200:
