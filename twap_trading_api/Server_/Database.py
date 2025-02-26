@@ -154,16 +154,12 @@ class Database:
         finally:
             session.close()
 
-    def get_orders(self, user_id: int = None,order_id : str = None,order_status:str = None):
+    def get_orders(self, order_id : str = None):
         session = self.SessionLocal()
         try:
             query = session.query(Twap)
-            if user_id:
-                query = query.filter(Twap.user_id == user_id)
             if order_id:
                 query = query.filter(Twap.id == order_id)
-            if order_status:
-                query = query.filter(Twap.status == order_status)
             orders = query.all()
             results = []
             for order in orders:
@@ -171,7 +167,10 @@ class Database:
                     "order_id": order.id,
                     "user_id":order.user_id,
                     "symbol": order.symbol,
+                    "exchange": order.exchange,
                     "side":order.side,
+                    "avg_executed_price": order.avg_executed_price,
+                    "executed_quantity": order.executed_quantity,
                     "duration":order.duration,
                     "status":order.status,
                     "created_at":order.created_at
@@ -187,7 +186,7 @@ class Database:
             if symbol:
                 query = query.filter(TwapExecution.symbol == symbol)
             if order_id:
-                query = query.filter(TwapExecution.id == order_id)
+                query = query.filter(TwapExecution.order_id == order_id)
             if side:
                 query = query.filter(TwapExecution.side == side)
             executions = query.all()

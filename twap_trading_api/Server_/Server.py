@@ -289,8 +289,6 @@ async def submit_twap_order(
     if order.token_id in orders:
         raise HTTPException(status_code=400, detail="Order with this token_id already exists")
 
-    # Créer l'objet métier TwapOrder
-    print("hhhhhh")
     twap = TwapOrder(
         token_id=order.token_id,
         username=username,
@@ -318,13 +316,24 @@ async def submit_twap_order(
     return {"message": "TWAP order accepted", "token_id": order.token_id}
 
 
-@app.get("/orders/{token_id}")
-async def get_order_status(token_id: str, username: str = Depends(verify_token)):
-    # Ici on pourrait récupérer l'état depuis une base de données ou un repository.
-    order_state = orders.get(token_id)  # à implémenter avec la BDD de Nico
-    if not order_state:
-        raise HTTPException(status_code=404, detail="Order not found")
-    return order_state
+@app.get("/orders")
+async def list_all_orders(order_id : str = None,username:str = Depends(verify_token)):
+    user = database_api.retrieve_user_by_username(username)
+    if user:
+        return database_api.get_orders(order_id)
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+@app.get("/orders/{order_id}")
+async def get_order_status(order_id: str, username: str = Depends(verify_token)):
+    user = database_api.retrieve_user_by_username(username)
+    if user:
+        order_exec = database_api.get_orders_executions(order_id)
+        if not order_exec:
+            raise HTTPException(status_code=404, detail="Order not found")
+        return order_exec
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
 
 if __name__ == "__main__":
