@@ -4,58 +4,192 @@ from typing import Set, Optional
 import asyncio
 import json
 from contextlib import asynccontextmanager
+
 from twap_trading_api.Server_.Exchanges.ExchangeMulti import ExchangeMulti
 from twap_trading_api.Server_.Exchanges import EXCHANGE_MAPPING
 from twap_trading_api.Server_.Database import *
 from twap_trading_api.Server_.Authentification.AuthentificationManager import *
 from twap_trading_api.Server_.TwapOrder import TwapOrder
 
-app = FastAPI(title="Twap-Trading-API")
+"""
+Main FastAPI application initialization
+"""
+app = FastAPI(
+    title="Twap-Trading-API",
+    description="A FastAPI-based system for paper trading using TWAP (Time-Weighted Average Price) orders with real market data, featuring real-time order book aggregation and execution simulation.",
+    version="1.0.0",
+    contact={
+        "name": "Nassim BOUSSAID, Nicolas COUTURAUD, Karthy MOUROUGAYA, Hugo Soulier",
+        "email": "nassim.boussaid@dauphine.eu"
+    },
+    openapi_tags=[
+        {"name": "General", "description": "Basic API health check and general endpoints."},
+        {"name": "Exchanges", "description": "Endpoints related to available exchanges and trading pairs."},
+        {"name": "Market Data", "description": "Retrieve historical and real-time market data."},
+        {"name": "Authentication", "description": "Endpoints for user login, registration, and security."},
+        {"name": "Orders", "description": "Manage TWAP orders, including submission, execution, and tracking."},
+    ]
+)
 
 
-@app.get("/")
+# =================================================================================
+#                           GENERAL ENDPOINTS
+# =================================================================================
+
+@app.get("/",
+    tags=["General"],
+    summary="Root Endpoint",
+    description="Welcome message for the API.",
+    responses={
+        200: {
+            "description": "Successful Response",
+            "content": {"application/json": {"example": {"message": "Welcome to the Twap-Trading-API"}}}
+        }
+    }
+)
 async def root():
+    """
+    Returns a welcome message for the API.
+    """
     return {"message": "Welcome to the Twap-Trading-API"}
 
 
-@app.get("/exchanges")
+@app.get("/ping",
+    tags=["General"],
+    summary="Check API Status",
+    description="Health check endpoint to verify if the API is running.",
+    responses={
+        200: {
+            "description": "Successful Response",
+            "content": {"application/json": {"example": {
+                "status": "ok",
+                "message": "Server is running",
+                "timestamp": "2023-01-01T00:00:00Z"
+            }}}
+        }
+    }
+)
+async def ping():
+    """
+    Checks if the API is running and returns a status response.
+    """
+    return {
+        "status": "ok",
+        "message": "Server is running",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+# =================================================================================
+#                           EXCHANGES ENDPOINTS
+# =================================================================================
+
+@app.get("/exchanges",
+    tags=["Exchanges"],
+    summary="List Available Exchanges",
+    description="Retrieves the list of supported exchanges for trading.",
+    responses={
+        200: {
+            "description": "List of Exchanges",
+            "content": {"application/json": {"example": {
+                "exchanges": ["Binance", "Bybit", "Coinbase", "Kucoin"]
+            }}}
+        }
+    }
+)
 async def get_exchanges():
+    """
+    Returns a list of all available exchanges supported by the system.
+    """
     return {"exchanges": list(EXCHANGE_MAPPING.keys())}
 
 
-@app.get("/{exchange}/symbols")
+@app.get("/{exchange}/symbols",
+    tags=["Exchanges"],
+    summary="Get Symbols for an Exchange",
+    description="Retrieves the available trading pairs for a specified exchange.",
+    responses={
+        200: {
+            "description": "List of symbols",
+            "content": {"application/json": {"example": {
+                "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
+            }}}
+        },
+        404: {"description": "Exchange not available"}
+    }
+)
 async def get_symbols(exchange: str):
-    if exchange not in list(EXCHANGE_MAPPING.keys()):
+    """
+    Returns all trading pairs for a given exchange.
+    """
+    if exchange not in EXCHANGE_MAPPING:
         raise HTTPException(status_code=404, detail="Exchange not available")
-    else:
-        exchange_object = EXCHANGE_MAPPING[exchange]
-        return {"symbols": list(exchange_object.get_trading_pairs().keys())}
+    return {"symbols": list(EXCHANGE_MAPPING[exchange].get_trading_pairs().keys())}
 
+# =================================================================================
+#                           MARKET DATA ENDPOINTS
+# =================================================================================
 
-@app.get("/klines/{exchange}/{symbol}")
+@app.get("/klines/{exchange}/{symbol}",
+    tags=["Market Data"],
+    summary="Retrieve Historical Data",
+    description="Fetches historical candlestick (klines) data for a given trading pair on an exchange.",
+    responses={
+        200: {
+            "description": "Historical Kline Data",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "klines": {
+                            "2025-02-01T00:00:00": {
+                                "Open": 102429.56,
+                                "High": 102783.71,
+                                "Low": 100279.51,
+                                "Close": 100635.65,
+                                "Volume": 12290.95747
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        404: {"description": "Exchange or Trading Pair Not Found"}
+    }
+)
 async def get_historical_data(exchange: str, symbol: str, interval: str, start_time: str, end_time: str):
-    if exchange not in list(EXCHANGE_MAPPING.keys()):
+    """
+    Retrieves historical candlestick data (klines) for the specified exchange, symbol, and time range.
+    """
+    if exchange not in EXCHANGE_MAPPING:
         raise HTTPException(status_code=404, detail="Exchange not available")
-    else:
-        exchange_object = EXCHANGE_MAPPING[exchange]
-        available_symbols = list(exchange_object.get_trading_pairs().keys())
-        if symbol not in available_symbols:
-            raise HTTPException(status_code=404, detail="Trading pair not available on this exchange")
-        else:
-            start_time_dt = datetime.fromisoformat(start_time)
-            end_time_dt = datetime.fromisoformat(end_time)
-            klines_df = await exchange_object.get_klines_data(symbol, interval, start_time_dt, end_time_dt)
 
-            return {"klines": klines_df.to_dict(orient="index")}
+    exchange_object = EXCHANGE_MAPPING[exchange]
+    available_symbols = list(exchange_object.get_trading_pairs().keys())
+    if symbol not in available_symbols:
+        raise HTTPException(status_code=404, detail="Trading pair not available on this exchange")
 
+    start_time_dt = datetime.fromisoformat(start_time)
+    end_time_dt = datetime.fromisoformat(end_time)
+    klines_df = await exchange_object.get_klines_data(symbol, interval, start_time_dt, end_time_dt)
+
+    return {"klines": klines_df.to_dict(orient="index")}
+
+# =================================================================================
+#                           WEBSOCKET MANAGEMENT
+# =================================================================================
 
 class ConnectionManager:
+    """
+    Manages WebSocket connections, subscriptions, and broadcasting of real-time data.
+    """
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
         self.subscriptions: Dict[WebSocket, Set[str]] = {}
         self.broadcast_tasks: Optional[asyncio.Task] = {}
 
     async def connect(self, websocket: WebSocket):
+        """
+        Accepts a new WebSocket connection and sends a welcome message.
+        """
         await websocket.accept()
         self.active_connections.add(websocket)
         self.subscriptions[websocket] = set()
@@ -65,6 +199,9 @@ class ConnectionManager:
         }))
 
     def disconnect(self, websocket: WebSocket):
+        """
+        Disconnects a WebSocket and cancels any broadcast tasks if no other clients are subscribed.
+        """
         self.active_connections.discard(websocket)
         if websocket in self.subscriptions:
             symbols = self.subscriptions[websocket]
@@ -79,14 +216,9 @@ class ConnectionManager:
                         del self.broadcast_tasks[symbol]
 
     async def handle_websocket(self, websocket: WebSocket):
-        """Handles WebSocket messages for subscribing/unsubscribing to symbols."""
-        """try:
-            username = await verify_token(token)
-            print(f"{username} connected !")
-        except Exception as e:
-            print(f"Invalid token: {e}")
-            await websocket.close(code = 1008, reason="Invalid token")
-            return"""
+        """
+        Handles WebSocket messages for subscribing/unsubscribing to symbols and manages real-time order book updates.
+        """
 
         await self.connect(websocket)
 
@@ -155,7 +287,10 @@ class ConnectionManager:
             self.disconnect(websocket)
 
     async def broadcast_order_book(self, symbol: str, exchanges: Set[str]):
-        """Fetch order book updates every second and send to subscribed clients."""
+        """
+        Periodically fetches aggregated order book data from multiple exchanges
+        and sends it to all clients subscribed to the given symbol.
+        """
         print(f"🌍 Started broadcasting {symbol} from {exchanges}")
         exchange_objects = [EXCHANGE_MAPPING[exchange] for exchange in exchanges]
         multi_exchange = ExchangeMulti(exchange_objects)
@@ -178,11 +313,182 @@ class ConnectionManager:
                         pass
 
 
+# Instantiate the global ConnectionManager to handle WebSocket connections
 manager = ConnectionManager()
 
-# Dictionnaire global pour suivre l'état des ordres TWAP
-orders: Dict[str, dict] = {}
+@app.websocket("/ws")
+# This WebSocket endpoint handles subscriptions/subscriptions removal to symbols
+# and broadcasts real-time order book updates.
+async def websocket_endpoint(websocket: WebSocket):
+    """
+    This WebSocket endpoint handles subscriptions/subscriptions removal to symbols
+    and broadcasts real-time order book updates.
+    """
+    await manager.handle_websocket(websocket)
 
+
+@asynccontextmanager
+async def lifespan():
+    """
+    Ensures cleanup of running tasks when the application shuts down.
+    """
+    yield
+
+    # Cleanup all background tasks on shutdown
+    for task in manager.broadcast_tasks.values():
+        task.cancel()
+
+# =================================================================================
+#                           AUTHENTICATION ENDPOINTS
+# =================================================================================
+
+@app.post("/login",
+    response_model=TokenResponse,
+    tags=["Authentication"],
+    summary="User Login",
+    description="Authenticates a user with the provided username and password, returning a JWT token if successful.",
+    responses={
+        200: {
+            "description": "JWT returned on successful login",
+            "content": {"application/json": {"example": {
+                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "token_type": "bearer"
+            }}}
+        },
+        401: {"description": "Invalid username or password"}
+    }
+)
+async def login(request: LoginRequest):
+    """
+    Validates the user's credentials and returns a JWT token upon success.
+    Request body example in LoginRequest model.
+    """
+    user = database_api.retrieve_user_by_username(request.username)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username")
+
+    if user.password != request.password:
+        raise HTTPException(status_code=401, detail="Invalid password")
+
+    token = create_token(request.username)
+    return {"access_token": token}
+
+
+@app.get("/secure",
+    tags=["Authentication"],
+    summary="Secure Endpoint",
+    description="Protected endpoint that requires a valid JWT token to access.",
+    responses={
+        200: {
+            "description": "User is authenticated",
+            "content": {"application/json": {"example": {
+                "message": "Hello john_doe! This is secure data",
+                "timestamp": "2025-02-27T00:14:03.543452"
+            }}}
+        },
+        401: {"description": "Invalid token"}
+    }
+)
+async def secure_endpoint(username: str = Depends(verify_token)):
+    """
+    Only accessible with a valid JWT. Returns a greeting with a timestamp.
+    """
+    return {
+        "message": f"Hello {username}! This is secure data",
+        "timestamp": datetime.now().isoformat()
+    }
+
+
+@app.post("/register",
+    status_code=201,
+    tags=["Authentication"],
+    summary="User Registration",
+    description="Registers a new user with the provided username and password.",
+    responses={
+        201: {
+            "description": "User created successfully",
+            "content": {"application/json": {"example": {
+                "message": "User correctly registered"
+            }}}
+        },
+        400: {"description": "Username already exists"}
+    }
+)
+async def register(request: RegisterRequest):
+    """
+    Creates a new user in the database if the username is not already taken.
+    """
+    user = database_api.retrieve_user_by_username(request.username)
+    if user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    database_api.create_user(request.username, request.password)
+    return {"message": "User correctly registered"}
+
+
+@app.delete("/unregister",
+    tags=["Authentication"],
+    summary="Unregister User",
+    description="Deletes the currently authenticated user's account if they are not an admin.",
+    responses={
+        200: {
+            "description": "User unregistered successfully",
+            "content": {"application/json": {"example": {
+                "message": "User successfully unregistered"
+            }}}
+        },
+        404: {"description": "User not found"},
+        403: {"description": "Admin cannot be unregistered"}
+    }
+)
+async def unregister(username: str = Depends(verify_token)):
+    """
+    Deletes the authenticated user from the database, unless they have an admin role.
+    """
+    user = database_api.retrieve_user_by_username(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.role == "admin":
+        raise HTTPException(status_code=403, detail="Admin cannot be unregistered")
+
+    database_api.delete_user(username)
+    return {"message": "User successfully unregistered"}
+
+
+@app.get("/users",
+    tags=["Authentication"],
+    summary="List All Users",
+    description="Lists all registered users. Only accessible to admin users.",
+    responses={
+        200: {
+            "description": "User list retrieved successfully",
+            "content": {"application/json": {"example": {
+                "users": [
+                    {"username": "john_doe", "role": "user"},
+                    {"username": "admin_user", "role": "admin"}
+                ]
+            }}}
+        },
+        403: {"description": "Not authorized (requires admin)"}
+    }
+)
+async def get_users(username: str = Depends(verify_token)):
+    """
+    Returns a list of all users in the system, restricted to admin users.
+    """
+    user = database_api.retrieve_user_by_username(username)
+    if not user or user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    return {"users": database_api.retrieve_all_users()}
+
+# =================================================================================
+#                           ORDERS ENDPOINTS
+# =================================================================================
+
+# Global dictionary to track the state of TWAP orders
+orders: Dict[str, dict] = {}
 
 class TWAPOrderRequest(BaseModel):
     token_id: str  # Identifiant unique fourni par le client
@@ -193,10 +499,9 @@ class TWAPOrderRequest(BaseModel):
     duration_seconds: int  # Durée totale par défaut (si aucune fenêtre n'est précisée)
     exchanges: List[str]  # Liste des exchanges à utiliser
 
-
 def update_order_state(twap):
     """
-    Met à jour le dictionnaire global 'orders' avec l'état courant de l'objet TwapOrder.
+    Updates the global 'orders' dictionary with the current state of a TwapOrder object.
     """
     total_executed = sum(lot["quantity"] for lot in twap.executions)
     percentage_executed = (total_executed / twap.total_quantity) * 100 if twap.total_quantity > 0 else 0
@@ -209,75 +514,6 @@ def update_order_state(twap):
         "lots_count": len(twap.executions),
         "total_quantity_executed": total_executed
     }
-
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.handle_websocket(websocket)
-
-
-@asynccontextmanager
-async def lifespan():
-    """Ensure cleanup of running tasks when app shuts down."""
-    yield  # No task starts automatically
-
-    # Cleanup all background tasks on shutdown
-    for task in manager.broadcast_tasks.values():
-        task.cancel()
-
-
-@app.post("/login", response_model=TokenResponse)
-async def login(request: LoginRequest):
-    user = database_api.retrieve_user_by_username(request.username)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid username")
-
-    if user.password != request.password:
-        raise HTTPException(status_code=401, detail="Invalid password")
-
-    token = create_token(request.username)
-    return {"access_token": token}
-
-
-@app.get("/secure")
-async def secure_endpoint(username: str = Depends(verify_token)):
-    """Protected endpoint requires valid JWT"""
-    return {
-        "message": f"Hello {username}! This is secure data",
-        "timestamp": datetime.now().isoformat()
-    }
-
-
-@app.post("/register", status_code=201)
-async def register(request: RegisterRequest):
-    user = database_api.retrieve_user_by_username(request.username)
-    if user:
-        raise HTTPException(status_code=400, detail="Username already exists")
-
-    database_api.create_user(request.username, request.password)
-    return {"message": "User correctly registered"}
-
-
-@app.delete("/unregister")
-async def unregister(username: str = Depends(verify_token)):
-    user = database_api.retrieve_user_by_username(username)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if user.role == "admin":
-        raise HTTPException(status_code=403, detail="Admin cannot be unregistered")
-
-    database_api.delete_user(username)
-    return {"message": "User successfully unregistered"}
-
-
-@app.get("/users")
-async def get_users(username: str = Depends(verify_token)):
-    user = database_api.retrieve_user_by_username(username)
-    if not user or user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    return {"users": database_api.retrieve_all_users()}
 
 
 @app.post("/orders/twap")
@@ -316,16 +552,71 @@ async def submit_twap_order(
     return {"message": "TWAP order accepted", "token_id": order.token_id}
 
 
-@app.get("/orders")
-async def list_all_orders(order_id : str = None,username:str = Depends(verify_token)):
+@app.get("/orders",
+    tags=["Orders"],
+    summary="List All Orders",
+    description="Returns all orders or a specific order if order_id is provided. Requires authentication.",
+    responses={
+        200: {
+            "description": "List of Orders or a Specific Order",
+            "content": {"application/json": {"example": {
+                "orders": [
+                    {
+                        "order_id": "order123",
+                        "status": "IN_PROGRESS",
+                        "percentage_executed": 50.0,
+                        "executions": []
+                    },
+                    {
+                        "order_id": "order456",
+                        "status": "COMPLETED",
+                        "percentage_executed": 100.0,
+                        "executions": []
+                    }
+                ]
+            }}}
+        },
+        403: {"description": "Not authorized"}
+    }
+)
+async def list_all_orders(order_id: str = None, username: str = Depends(verify_token)):
+    """
+    Retrieves all orders or a specific order if order_id is provided.
+    """
     user = database_api.retrieve_user_by_username(username)
     if user:
         return database_api.get_orders(order_id)
     else:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-@app.get("/orders/{order_id}")
+
+@app.get("/orders/{order_id}",
+    tags=["Orders"],
+    summary="Get TWAP Order Status",
+    description="Retrieves the detailed execution information of a specific TWAP order.",
+    responses={
+        200: {
+            "description": "Execution details for the specified order",
+            "content": {"application/json": {"example": {
+                "order_id": "order123",
+                "status": "IN_PROGRESS",
+                "executions": [
+                    {"quantity": 0.2, "price": 20010.5, "timestamp": "2023-01-01T00:10:00Z"}
+                ],
+                "vwap": 20000.7,
+                "avg_execution_price": 20010.5,
+                "lots_count": 1,
+                "total_quantity_executed": 0.2
+            }}}
+        },
+        404: {"description": "Order not found"},
+        403: {"description": "Not authorized"}
+    }
+)
 async def get_order_status(order_id: str, username: str = Depends(verify_token)):
+    """
+    Returns the execution details for a specified order.
+    """
     user = database_api.retrieve_user_by_username(username)
     if user:
         order_exec = database_api.get_orders_executions(order_id)
@@ -334,6 +625,10 @@ async def get_order_status(order_id: str, username: str = Depends(verify_token))
         return order_exec
     else:
         raise HTTPException(status_code=403, detail="Not authorized")
+
+# =================================================================================
+#                                 LAUNCH API
+# =================================================================================
 
 
 if __name__ == "__main__":
