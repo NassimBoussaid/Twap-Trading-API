@@ -19,8 +19,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 Base = declarative_base()
 
 
-# Modèle User pour la base de données
+
 class User(Base):
+    """
+        User class for database management
+    """
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
     username = Column(String, unique=True, nullable=False)
@@ -29,6 +32,9 @@ class User(Base):
 
 
 class Twap(Base):
+    """
+        Twap Orders class for database management
+    """
     __tablename__ = "twap_orders"
     id = Column(Integer, primary_key=True,autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -44,6 +50,9 @@ class Twap(Base):
 
 
 class TwapExecution(Base):
+    """
+        Twap exections class for database management
+    """
     __tablename__ = "twap_executions"
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_id = Column(Integer, ForeignKey("twap_orders.id", ondelete="CASCADE"), nullable=False)
@@ -59,10 +68,27 @@ Base.metadata.create_all(bind=engine)
 
 
 class Database:
+    """
+        Database class for defining database methods and attributes.
+        This class provides various methods to interact with the database, including
+        user management and TWAP order processing.
+    """
     def __init__(self):
+        """
+            Initialize the Database instance with a session factory.
+        """
         self.SessionLocal = SessionLocal
 
     def retrieve_user_by_username(self, username: str):
+        """
+            Retrieve user in the database by username
+
+            Arg:
+                username (str): username to retrieve user
+
+            Return:
+                User: The corresponding user instance if found, else None
+        """
         session = self.SessionLocal()
         try:
             return session.query(User).filter(User.username == username).first()
@@ -70,14 +96,42 @@ class Database:
             session.close()
 
     def retrieve_pwd_by_username(self, username: str):
+        """
+            Retrieve a user's password from the database by username.
+
+            Args:
+                username (str): The username to look up.
+
+            Returns:
+                str: The password of the user if found, otherwise None.
+        """
         user = self.retrieve_user_by_username(username)
         return user.password if user else None
 
     def retrieve_role_by_username(self, username: str):
+        """
+            Retrieve a user's role from the database by username.
+
+            Args:
+                username (str): The username to look up.
+
+            Returns:
+                str: The role of the user if found, otherwise None.
+        """
         user = self.retrieve_user_by_username(username)
         return user.role if user else None
 
     def create_user(self, username: str, password: str):
+        """
+            Create a new user in the database.
+
+            Args:
+                username (str): The desired username for the new user.
+                password (str): The password for the new user.
+
+            Raises:
+                SQLAlchemyError: If there is an issue during user creation.
+        """
         session = self.SessionLocal()
         try:
             # hashed_password = pwd_context.hash(password)
@@ -88,6 +142,12 @@ class Database:
             session.close()
 
     def retrieve_all_users(self):
+        """
+            Retrieve all users from the database.
+
+            Returns:
+                List[User]: A list of all user instances in the database.
+        """
         session = self.SessionLocal()
         try:
             return session.query(User).all()
@@ -95,6 +155,15 @@ class Database:
             session.close()
 
     def delete_user(self, username: str):
+        """
+            Delete a specified user from the database.
+
+            Args:
+                username (str): The username of the user to delete.
+
+            Raises:
+                SQLAlchemyError: If an error occurs during the deletion process.
+        """
         session = self.SessionLocal()
         try:
             user = session.query(User).filter(User.username == username).first()
@@ -106,6 +175,24 @@ class Database:
 
 
     def add_order_executions(self, order_id : str,symbol: str,executions: List[Dict]):
+        """
+            Add executions for a specified TWAP order in the database.
+
+            Args:
+                order_id (str): The unique identifier of the TWAP order.
+                symbol (str): The trading pair symbol (e.g., "BTCUSDT").
+                executions (List[Dict]): A list of execution details, each containing:
+                    - side (str): "buy" or "sell".
+                    - quantity (float): Executed quantity.
+                    - price (float): Execution price.
+                    - timestamp (str, optional): Timestamp of the execution.
+
+            Returns:
+                str: Confirmation message indicating successful insertion.
+
+            Raises:
+                Exception: If an error occurs while adding executions.
+        """
         session = self.SessionLocal()
         try:
             for execution in executions:
@@ -127,15 +214,32 @@ class Database:
         finally:
             session.close()
 
-    def add_order(self,username: str,token_id:str,symbol:str,exchange:str,side:str,executed_price:float,executed_quantity:float,executed_duration:float,status:str):
+    def add_order(self,username: str,order_id:str,symbol:str,exchange:str,side:str,executed_price:float,executed_quantity:float,executed_duration:float,status:str):
+        """
+            Add a new TWAP order to the database.
+
+            Args:
+                username (str): Username of the user placing the order.
+                order_id (str): Unique identifier for the order.
+                symbol (str): Trading pair symbol (e.g., "BTCUSDT").
+                exchange (str): Exchange where the order is executed.
+                side (str): Order side, either "buy" or "sell".
+                executed_price (float): Average execution price of the order.
+                executed_quantity (float): Total executed quantity.
+                executed_duration (float): Duration of the order execution.
+                status (str): Current status of the order.
+
+            Raises:
+                HTTPException: If the order ID already exists or if an error occurs while creating the order.
+        """
         session = self.SessionLocal()
         try:
-            existing_order = session.query(Twap).filter(Twap.id == token_id).first()
+            existing_order = session.query(Twap).filter(Twap.id == order_id).first()
             user = self.retrieve_user_by_username(username)
             if existing_order:
                 raise HTTPException(status_code=400, detail="Order ID already exists")
             new_order = Twap(
-                id=token_id,
+                id=order_id,
                 user_id=user.id,
                 symbol=symbol,
                 exchange = exchange,
@@ -155,6 +259,15 @@ class Database:
             session.close()
 
     def get_orders(self, order_id : str = None):
+        """
+            Retrieve orders from the database.
+
+            Args:
+                order_id (str, optional): Specific order ID to retrieve (default: None).
+
+            Returns:
+                List[Dict]: A list of orders with their details.
+        """
         session = self.SessionLocal()
         try:
             query = session.query(Twap)
@@ -180,6 +293,17 @@ class Database:
             session.close()
 
     def get_orders_executions(self,order_id : str = None,symbol: str = None, side: str = None):
+        """
+            Retrieve execution details of TWAP orders.
+
+            Args:
+                order_id (str, optional): Order ID to filter executions (default: None).
+                symbol (str, optional): Trading pair symbol to filter executions (default: None).                    side (str, optional): Order side ("buy" or "sell") to filter executions (default: None).
+
+            Returns:
+                List[Dict]: A list of executions matching the given filters.
+        """
+
         session = self.SessionLocal()
         try:
             query = session.query(TwapExecution)
