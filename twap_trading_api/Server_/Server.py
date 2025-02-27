@@ -535,6 +535,10 @@ async def submit_twap_order(
         duration_seconds=order.duration_seconds,
         exchanges=order.exchanges,
     )
+    try :
+        database_api.add_order(twap.username, twap.token_id, twap.symbol, twap.exchanges[0], twap.side, twap.limit_price, twap.total_quantity,twap.duration_seconds, twap.status)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating order: {e}")
 
     # Stocker l'état initial dans le dictionnaire global orders
     orders[order.token_id] = {

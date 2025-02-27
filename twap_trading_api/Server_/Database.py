@@ -41,8 +41,8 @@ class Twap(Base):
     symbol = Column(String, nullable=False)
     exchange = Column(String, nullable=False)
     side = Column(String, nullable=False)
-    avg_executed_price = Column(Float,nullable=False)
-    executed_quantity = Column(Float, nullable=False)
+    limit_price = Column(Float,nullable=False)
+    quantity = Column(Float, nullable=False)
     duration = Column(Float,nullable=False)
     status = Column(Enum("pending", "executing", "completed", "canceled", name="order_status_enum"), nullable=False,
                     default="pending")
@@ -174,18 +174,16 @@ class Database:
             session.close()
 
 
-    def add_order_executions(self, order_id : str,symbol: str,executions: List[Dict]):
+    def add_order_executions(self, order_id : str,symbol: str,side: str, quantity: float, price: float,timestamp: str):
         """
             Add executions for a specified TWAP order in the database.
 
             Args:
                 order_id (str): The unique identifier of the TWAP order.
                 symbol (str): The trading pair symbol (e.g., "BTCUSDT").
-                executions (List[Dict]): A list of execution details, each containing:
-                    - side (str): "buy" or "sell".
-                    - quantity (float): Executed quantity.
-                    - price (float): Execution price.
-                    - timestamp (str, optional): Timestamp of the execution.
+                side (str): Order side, either "buy" or "sell".
+                price (str): executed price
+                timestamp (str): execution time
 
             Returns:
                 str: Confirmation message indicating successful insertion.
@@ -195,16 +193,15 @@ class Database:
         """
         session = self.SessionLocal()
         try:
-            for execution in executions:
-                new_order = TwapExecution(
-                    order_id=order_id,
-                    symbol=symbol,
-                    side=execution["side"],
-                    quantity=execution["quantity"],
-                    price=execution["price"],
-                    timestamp=execution.get("timestamp")
-                )
-                session.add(new_order)
+            new_order = TwapExecution(
+                order_id=order_id,
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                price=price,
+                timestamp=timestamp
+            )
+            session.add(new_order)
 
             session.commit()
             return "Orders successfully added"
@@ -214,7 +211,7 @@ class Database:
         finally:
             session.close()
 
-    def add_order(self,username: str,order_id:str,symbol:str,exchange:str,side:str,executed_price:float,executed_quantity:float,executed_duration:float,status:str):
+    def add_order(self,username: str,order_id:str,symbol:str,exchange:str,side:str,limit_price:float,quantity:float,executed_duration:float,status:str):
         """
             Add a new TWAP order to the database.
 
@@ -224,8 +221,8 @@ class Database:
                 symbol (str): Trading pair symbol (e.g., "BTCUSDT").
                 exchange (str): Exchange where the order is executed.
                 side (str): Order side, either "buy" or "sell".
-                executed_price (float): Average execution price of the order.
-                executed_quantity (float): Total executed quantity.
+                limit_price (float): Average execution price of the order.
+                quantity (float): Total executed quantity.
                 executed_duration (float): Duration of the order execution.
                 status (str): Current status of the order.
 
@@ -244,8 +241,8 @@ class Database:
                 symbol=symbol,
                 exchange = exchange,
                 side=side,
-                avg_executed_price = executed_price,
-                executed_quantity=executed_quantity,
+                limit_price = limit_price,
+                quantity=quantity,
                 duration=executed_duration,
                 status=status,
                 created_at = func.now()
@@ -282,8 +279,8 @@ class Database:
                     "symbol": order.symbol,
                     "exchange": order.exchange,
                     "side":order.side,
-                    "avg_executed_price": order.avg_executed_price,
-                    "executed_quantity": order.executed_quantity,
+                    "limit_price": order.limit_price,
+                    "quantity": order.quantity,
                     "duration":order.duration,
                     "status":order.status,
                     "created_at":order.created_at
@@ -329,5 +326,18 @@ class Database:
         finally:
             session.close()
 
+    def update_order_status(self, order_id: str, new_status: str):
+        """Met à jour le statut de l'ordre."""
+        session = self.SessionLocal()
+        try:
+            order = session.query(Twap).filter(Twap.id == order_id).first()
+            if order:
+                order.status = new_status
+                session.commit()
+        except Exception as e:
+            session.rollback()
+            print(f"Error updating order status: {e}")
+        finally:
+            session.close()
 
 database_api = Database()

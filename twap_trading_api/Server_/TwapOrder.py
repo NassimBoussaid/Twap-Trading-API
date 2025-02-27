@@ -108,17 +108,17 @@ class TwapOrder:
                         "price": sub["price"]
                     }
                     self.executions.append(execution)
+                    database_api.add_order_executions(self.token_id, self.symbol, execution["side"],execution["quantity"],execution["price"],execution["timestamp"])
                     total_executed += sub["quantity"]
                     total_cost += sub["price"] * sub["quantity"]
+            self.avg_execution_price = total_cost / total_executed if total_executed > 0 else 0
             self.status = "in_progress"
             self.vwap = total_cost / total_executed if total_executed > 0 else 0
             if update_callback:
                 update_callback(self)
 
-        self.avg_execution_price = total_cost / total_executed if total_executed > 0 else 0
         self.status = "completed"
-        database_api.add_order_executions(self.token_id,self.symbol,self.executions)
-        database_api.add_order(self.username,self.token_id,self.symbol,self.exchanges[0],self.side,self.avg_execution_price,total_executed,self.duration_seconds,self.status)
+        database_api.update_order_status(self.token_id,self.status)
 
         if update_callback:
             update_callback(self)
