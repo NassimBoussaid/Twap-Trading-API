@@ -1,6 +1,7 @@
 ﻿from datetime import datetime
 import asyncio
 from typing import Dict, List
+import uuid
 
 from twap_trading_api.Server_.Database import database_api
 from twap_trading_api.Server_.Exchanges.ExchangeMulti import ExchangeMulti
@@ -8,10 +9,25 @@ from twap_trading_api.Server_.Exchanges import EXCHANGE_MAPPING
 
 
 class TwapOrder:
+    """
+    Represents a Time-Weighted Average Price (TWAP) order.
+
+    Attributes:
+        username (str): The username associated with the order.
+        token_id (str): A unique identifier for the order.
+        symbol (str): The trading pair symbol (e.g., "BTCUSDT").
+        side (str): The order side, either "buy" or "sell".
+        total_quantity (float): The total quantity to be executed.
+        limit_price (float): The maximum price for buying or the minimum price for selling.
+        duration_seconds (int): The total execution duration in seconds.
+        exchanges (List[str]): List of exchanges where the order will be executed.
+        executions (List[Dict]): A list of executed trades.
+        status (str): The current order status.
+        avg_execution_price (float): The average execution price.
+    """
     def __init__(
             self,
-            token_id: str,
-            username:str,
+            username: str,
             symbol: str,
             side: str,
             total_quantity: float,
@@ -20,19 +36,24 @@ class TwapOrder:
             exchanges: List[str],
     ):
         self.username = username
-        self.token_id = token_id
+        self.token_id = str(uuid.uuid4())
         self.symbol = symbol
         self.side = side.lower()  # "buy" ou "sell"
         self.total_quantity = total_quantity
         self.limit_price = limit_price
         self.duration_seconds = duration_seconds
         self.exchanges = exchanges
-        self.executions: List[Dict] = []  # Détails des exécutions partielles
+        self.executions: List[Dict] = []  # Partial executions
         self.status: str = "pending"
-        self.vwap: float = 0.0
         self.avg_execution_price: float = 0.0
 
     async def get_current_order_book(self) -> Dict:
+        """
+        Retrieves the aggregated order book from multiple exchanges.
+
+        Returns:
+            Dict: The aggregated order book with bids and asks.
+        """
         exchange_objects = [EXCHANGE_MAPPING[ex] for ex in self.exchanges if ex in EXCHANGE_MAPPING]
         if not exchange_objects:
             return {"bids": {}, "asks": {}}
@@ -43,20 +64,20 @@ class TwapOrder:
 
     def check_execution(self, order_book: Dict, slice_quantity: float) -> List[Dict]:
         """
-        Pour 'buy' : parcourt les asks triés par ordre croissant de prix (en filtrant ceux supérieurs au limit_price)
-        et agrège la liquidité disponible pour tenter de remplir slice_quantity.
-        Pour 'sell' : fait l'inverse avec les bids triés par ordre décroissant (en filtrant ceux inférieurs au limit_price).
+        Determines the possible executions based on available liquidity in the order book.
 
-        Retourne une liste de sous-ordres, chacun étant un dictionnaire avec 'price' et 'quantity'.
-        La somme des quantités sera <= slice_quantity (si la liquidité totale disponible est insuffisante).
-        Si aucune liquidité n'est disponible (ou les conditions de prix ne sont pas remplies), retourne une liste vide.
+        Args:
+            order_book (Dict): The aggregated order book containing bids and asks.
+            slice_quantity (float): The quantity to be executed in this slice.
+
+        Returns:
+            List[Dict]: A list of executed sub-orders containing price and quantity.
         """
         executions = []
         remaining = slice_quantity
 
         if self.side == "buy":
             asks = order_book.get("asks", {})
-            # Filtrer les niveaux dont le prix est inférieur ou égal au limit_price
             valid_levels = [(float(price), volume_source[0], volume_source[1])
                             for price, volume_source in asks.items() if float(price) <= self.limit_price]
             sorted_levels = sorted(valid_levels, key=lambda x: x[0])
@@ -79,15 +100,17 @@ class TwapOrder:
 
         return executions
 
-    async def run(self,update_callback=None):
+    async def run(self, update_callback=None):
         """
-        Exécute l'ordre TWAP.
-        - Si des fenêtres personnalisées sont définies, on exécute chaque fenêtre successivement,
-          sinon on utilise la durée par défaut.
-        - À chaque tranche (1 seconde), on interroge l'order book et on utilise la méthode check_execution
-          qui retourne une liste de sous-ordres permettant de remplir la tranche demandée, en tenant compte
-          de la liquidité disponible sur plusieurs niveaux.
-        - On met à jour l'état interne (executions, status, VWAP) et on appelle update_callback si défini.
+        Executes the TWAP order over the specified duration.
+
+        - Queries the order book at each time slice.
+        - Checks execution possibilities based on available liquidity.
+        - Updates the execution history and order status.
+        - Calls the update callback if provided.
+
+        Args:
+            update_callback (function, optional): A callback function to handle order updates.
         """
         total_executed = 0.0
         total_cost = 0.0
@@ -108,17 +131,17 @@ class TwapOrder:
                         "price": sub["price"]
                     }
                     self.executions.append(execution)
-                    database_api.add_order_executions(self.token_id, self.symbol, execution["side"],execution["quantity"],execution["price"],execution["timestamp"])
+                    database_api.add_order_executions(self.token_id, self.symbol, execution["side"],
+                                                      execution["quantity"], execution["price"], execution["timestamp"])
                     total_executed += sub["quantity"]
                     total_cost += sub["price"] * sub["quantity"]
+            self.status = "executing"
             self.avg_execution_price = total_cost / total_executed if total_executed > 0 else 0
-            self.status = "in_progress"
-            self.vwap = total_cost / total_executed if total_executed > 0 else 0
             if update_callback:
                 update_callback(self)
 
         self.status = "completed"
-        database_api.update_order_status(self.token_id,self.status)
+        database_api.update_order_status(self.token_id, self.status)
 
         if update_callback:
             update_callback(self)

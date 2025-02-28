@@ -37,16 +37,16 @@ app = FastAPI(
 # =================================================================================
 
 @app.get("/",
-    tags=["General"],
-    summary="Root Endpoint",
-    description="Welcome message for the API.",
-    responses={
-        200: {
-            "description": "Successful Response",
-            "content": {"application/json": {"example": {"message": "Welcome to the Twap-Trading-API"}}}
-        }
-    }
-)
+         tags=["General"],
+         summary="Root Endpoint",
+         description="Welcome message for the API.",
+         responses={
+             200: {
+                 "description": "Successful Response",
+                 "content": {"application/json": {"example": {"message": "Welcome to the Twap-Trading-API"}}}
+             }
+         }
+         )
 async def root():
     """
     Returns a welcome message for the API.
@@ -55,20 +55,20 @@ async def root():
 
 
 @app.get("/ping",
-    tags=["General"],
-    summary="Check API Status",
-    description="Health check endpoint to verify if the API is running.",
-    responses={
-        200: {
-            "description": "Successful Response",
-            "content": {"application/json": {"example": {
-                "status": "ok",
-                "message": "Server is running",
-                "timestamp": "2023-01-01T00:00:00Z"
-            }}}
-        }
-    }
-)
+         tags=["General"],
+         summary="Check API Status",
+         description="Health check endpoint to verify if the API is running.",
+         responses={
+             200: {
+                 "description": "Successful Response",
+                 "content": {"application/json": {"example": {
+                     "status": "ok",
+                     "message": "Server is running",
+                     "timestamp": "2023-01-01T00:00:00Z"
+                 }}}
+             }
+         }
+         )
 async def ping():
     """
     Checks if the API is running and returns a status response.
@@ -79,23 +79,24 @@ async def ping():
         "timestamp": datetime.utcnow().isoformat()
     }
 
+
 # =================================================================================
 #                           EXCHANGES ENDPOINTS
 # =================================================================================
 
 @app.get("/exchanges",
-    tags=["Exchanges"],
-    summary="List Available Exchanges",
-    description="Retrieves the list of supported exchanges for trading.",
-    responses={
-        200: {
-            "description": "List of Exchanges",
-            "content": {"application/json": {"example": {
-                "exchanges": ["Binance", "Bybit", "Coinbase", "Kucoin"]
-            }}}
-        }
-    }
-)
+         tags=["Exchanges"],
+         summary="List Available Exchanges",
+         description="Retrieves the list of supported exchanges for trading.",
+         responses={
+             200: {
+                 "description": "List of Exchanges",
+                 "content": {"application/json": {"example": {
+                     "exchanges": ["Binance", "Bybit", "Coinbase", "Kucoin"]
+                 }}}
+             }
+         }
+         )
 async def get_exchanges():
     """
     Returns a list of all available exchanges supported by the system.
@@ -104,19 +105,19 @@ async def get_exchanges():
 
 
 @app.get("/{exchange}/symbols",
-    tags=["Exchanges"],
-    summary="Get Symbols for an Exchange",
-    description="Retrieves the available trading pairs for a specified exchange.",
-    responses={
-        200: {
-            "description": "List of symbols",
-            "content": {"application/json": {"example": {
-                "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
-            }}}
-        },
-        404: {"description": "Exchange not available"}
-    }
-)
+         tags=["Exchanges"],
+         summary="Get Symbols for an Exchange",
+         description="Retrieves the available trading pairs for a specified exchange.",
+         responses={
+             200: {
+                 "description": "List of symbols",
+                 "content": {"application/json": {"example": {
+                     "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
+                 }}}
+             },
+             404: {"description": "Exchange not available"}
+         }
+         )
 async def get_symbols(exchange: str):
     """
     Returns all trading pairs for a given exchange.
@@ -125,36 +126,37 @@ async def get_symbols(exchange: str):
         raise HTTPException(status_code=404, detail="Exchange not available")
     return {"symbols": list(EXCHANGE_MAPPING[exchange].get_trading_pairs().keys())}
 
+
 # =================================================================================
 #                           MARKET DATA ENDPOINTS
 # =================================================================================
 
 @app.get("/klines/{exchange}/{symbol}",
-    tags=["Market Data"],
-    summary="Retrieve Historical Data",
-    description="Fetches historical candlestick (klines) data for a given trading pair on an exchange.",
-    responses={
-        200: {
-            "description": "Historical Kline Data",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "klines": {
-                            "2025-02-01T00:00:00": {
-                                "Open": 102429.56,
-                                "High": 102783.71,
-                                "Low": 100279.51,
-                                "Close": 100635.65,
-                                "Volume": 12290.95747
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        404: {"description": "Exchange or Trading Pair Not Found"}
-    }
-)
+         tags=["Market Data"],
+         summary="Retrieve Historical Data",
+         description="Fetches historical candlestick (klines) data for a given trading pair on an exchange.",
+         responses={
+             200: {
+                 "description": "Historical Kline Data",
+                 "content": {
+                     "application/json": {
+                         "example": {
+                             "klines": {
+                                 "2025-02-01T00:00:00": {
+                                     "Open": 102429.56,
+                                     "High": 102783.71,
+                                     "Low": 100279.51,
+                                     "Close": 100635.65,
+                                     "Volume": 12290.95747
+                                 }
+                             }
+                         }
+                     }
+                 }
+             },
+             404: {"description": "Exchange or Trading Pair Not Found"}
+         }
+         )
 async def get_historical_data(exchange: str, symbol: str, interval: str, start_time: str, end_time: str):
     """
     Retrieves historical candlestick data (klines) for the specified exchange, symbol, and time range.
@@ -173,6 +175,7 @@ async def get_historical_data(exchange: str, symbol: str, interval: str, start_t
 
     return {"klines": klines_df.to_dict(orient="index")}
 
+
 # =================================================================================
 #                           WEBSOCKET MANAGEMENT
 # =================================================================================
@@ -181,6 +184,7 @@ class ConnectionManager:
     """
     Manages WebSocket connections, subscriptions, and broadcasting of real-time data.
     """
+
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
         self.subscriptions: Dict[WebSocket, Set[str]] = {}
@@ -316,6 +320,7 @@ class ConnectionManager:
 # Instantiate the global ConnectionManager to handle WebSocket connections
 manager = ConnectionManager()
 
+
 @app.websocket("/ws")
 # This WebSocket endpoint handles subscriptions/subscriptions removal to symbols
 # and broadcasts real-time order book updates.
@@ -338,26 +343,27 @@ async def lifespan():
     for task in manager.broadcast_tasks.values():
         task.cancel()
 
+
 # =================================================================================
 #                           AUTHENTICATION ENDPOINTS
 # =================================================================================
 
 @app.post("/login",
-    response_model=TokenResponse,
-    tags=["Authentication"],
-    summary="User Login",
-    description="Authenticates a user with the provided username and password, returning a JWT token if successful.",
-    responses={
-        200: {
-            "description": "JWT returned on successful login",
-            "content": {"application/json": {"example": {
-                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-                "token_type": "bearer"
-            }}}
-        },
-        401: {"description": "Invalid username or password"}
-    }
-)
+          response_model=TokenResponse,
+          tags=["Authentication"],
+          summary="User Login",
+          description="Authenticates a user with the provided username and password, returning a JWT token if successful.",
+          responses={
+              200: {
+                  "description": "JWT returned on successful login",
+                  "content": {"application/json": {"example": {
+                      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                      "token_type": "bearer"
+                  }}}
+              },
+              401: {"description": "Invalid username or password"}
+          }
+          )
 async def login(request: LoginRequest):
     """
     Validates the user's credentials and returns a JWT token upon success.
@@ -375,20 +381,20 @@ async def login(request: LoginRequest):
 
 
 @app.get("/secure",
-    tags=["Authentication"],
-    summary="Secure Endpoint",
-    description="Protected endpoint that requires a valid JWT token to access.",
-    responses={
-        200: {
-            "description": "User is authenticated",
-            "content": {"application/json": {"example": {
-                "message": "Hello john_doe! This is secure data",
-                "timestamp": "2025-02-27T00:14:03.543452"
-            }}}
-        },
-        401: {"description": "Invalid token"}
-    }
-)
+         tags=["Authentication"],
+         summary="Secure Endpoint",
+         description="Protected endpoint that requires a valid JWT token to access.",
+         responses={
+             200: {
+                 "description": "User is authenticated",
+                 "content": {"application/json": {"example": {
+                     "message": "Hello john_doe! This is secure data",
+                     "timestamp": "2025-02-27T00:14:03.543452"
+                 }}}
+             },
+             401: {"description": "Invalid token"}
+         }
+         )
 async def secure_endpoint(username: str = Depends(verify_token)):
     """
     Only accessible with a valid JWT. Returns a greeting with a timestamp.
@@ -400,20 +406,20 @@ async def secure_endpoint(username: str = Depends(verify_token)):
 
 
 @app.post("/register",
-    status_code=201,
-    tags=["Authentication"],
-    summary="User Registration",
-    description="Registers a new user with the provided username and password.",
-    responses={
-        201: {
-            "description": "User created successfully",
-            "content": {"application/json": {"example": {
-                "message": "User correctly registered"
-            }}}
-        },
-        400: {"description": "Username already exists"}
-    }
-)
+          status_code=201,
+          tags=["Authentication"],
+          summary="User Registration",
+          description="Registers a new user with the provided username and password.",
+          responses={
+              201: {
+                  "description": "User created successfully",
+                  "content": {"application/json": {"example": {
+                      "message": "User correctly registered"
+                  }}}
+              },
+              400: {"description": "Username already exists"}
+          }
+          )
 async def register(request: RegisterRequest):
     """
     Creates a new user in the database if the username is not already taken.
@@ -427,20 +433,20 @@ async def register(request: RegisterRequest):
 
 
 @app.delete("/unregister",
-    tags=["Authentication"],
-    summary="Unregister User",
-    description="Deletes the currently authenticated user's account if they are not an admin.",
-    responses={
-        200: {
-            "description": "User unregistered successfully",
-            "content": {"application/json": {"example": {
-                "message": "User successfully unregistered"
-            }}}
-        },
-        404: {"description": "User not found"},
-        403: {"description": "Admin cannot be unregistered"}
-    }
-)
+            tags=["Authentication"],
+            summary="Unregister User",
+            description="Deletes the currently authenticated user's account if they are not an admin.",
+            responses={
+                200: {
+                    "description": "User unregistered successfully",
+                    "content": {"application/json": {"example": {
+                        "message": "User successfully unregistered"
+                    }}}
+                },
+                404: {"description": "User not found"},
+                403: {"description": "Admin cannot be unregistered"}
+            }
+            )
 async def unregister(username: str = Depends(verify_token)):
     """
     Deletes the authenticated user from the database, unless they have an admin role.
@@ -457,22 +463,22 @@ async def unregister(username: str = Depends(verify_token)):
 
 
 @app.get("/users",
-    tags=["Authentication"],
-    summary="List All Users",
-    description="Lists all registered users. Only accessible to admin users.",
-    responses={
-        200: {
-            "description": "User list retrieved successfully",
-            "content": {"application/json": {"example": {
-                "users": [
-                    {"username": "john_doe", "role": "user"},
-                    {"username": "admin_user", "role": "admin"}
-                ]
-            }}}
-        },
-        403: {"description": "Not authorized (requires admin)"}
-    }
-)
+         tags=["Authentication"],
+         summary="List All Users",
+         description="Lists all registered users. Only accessible to admin users.",
+         responses={
+             200: {
+                 "description": "User list retrieved successfully",
+                 "content": {"application/json": {"example": {
+                     "users": [
+                         {"username": "john_doe", "role": "user"},
+                         {"username": "admin_user", "role": "admin"}
+                     ]
+                 }}}
+             },
+             403: {"description": "Not authorized (requires admin)"}
+         }
+         )
 async def get_users(username: str = Depends(verify_token)):
     """
     Returns a list of all users in the system, restricted to admin users.
@@ -483,37 +489,44 @@ async def get_users(username: str = Depends(verify_token)):
 
     return {"users": database_api.retrieve_all_users()}
 
+
 # =================================================================================
 #                           ORDERS ENDPOINTS
 # =================================================================================
 
-# Global dictionary to track the state of TWAP orders
-orders: Dict[str, dict] = {}
-
 class TWAPOrderRequest(BaseModel):
-    token_id: str  # Identifiant unique fourni par le client
-    symbol: str  # Ex : "BTCUSDT" ou "BTC" selon vos conventions
-    side: str  # "buy" ou "sell"
-    total_quantity: float  # Quantité totale à exécuter
-    limit_price: float  # Prix limite (max pour buy, min pour sell)
-    duration_seconds: int  # Durée totale par défaut (si aucune fenêtre n'est précisée)
-    exchanges: List[str]  # Liste des exchanges à utiliser
+    symbol: str  # Example: "BTCUSDT" or "BTC" depending on your conventions
+    side: str  # "buy" or "sell"
+    total_quantity: float  # Total quantity to execute
+    limit_price: float  # Limit price (max for buy, min for sell)
+    duration_seconds: int  # Default total duration (if no time window is specified)
+    exchanges: List[str]  # List of exchanges to use
+
 
 def update_order_state(twap):
     """
-    Updates the global 'orders' dictionary with the current state of a TwapOrder object.
+    Calculates the total executed quantity, the percentage of execution,
+    the average execution price, and the number of lots executed.
+    Then, updates this information in the database.
+
+    Args:
+        twap: The TWAP order object to update.
     """
     total_executed = sum(lot["quantity"] for lot in twap.executions)
     percentage_executed = (total_executed / twap.total_quantity) * 100 if twap.total_quantity > 0 else 0
-    orders[twap.token_id] = {
+
+    state = {
         "status": twap.status,
-        "executions": twap.executions,
-        "percentage_executed": percentage_executed,
-        "vwap": twap.vwap,
-        "avg_execution_price": twap.avg_execution_price,
+        "percent_exec": percentage_executed,
+        "avg_exec_price": twap.avg_execution_price,
         "lots_count": len(twap.executions),
-        "total_quantity_executed": total_executed
+        "total_exec": total_executed
     }
+
+    try:
+        database_api.update_order_state(twap.token_id, state)
+    except Exception as e:
+        print("Error updating order state in the database:", e)
 
 
 @app.post("/orders/twap")
@@ -522,67 +535,63 @@ async def submit_twap_order(
         background_tasks: BackgroundTasks,
         username: str = Depends(verify_token)
 ):
-    if order.token_id in orders:
-        raise HTTPException(status_code=400, detail="Order with this token_id already exists")
-
-    twap = TwapOrder(
-        token_id=order.token_id,
-        username=username,
-        symbol=order.symbol,
-        side=order.side,
-        total_quantity=order.total_quantity,
-        limit_price=order.limit_price,
-        duration_seconds=order.duration_seconds,
-        exchanges=order.exchanges,
-    )
-    try :
-        database_api.add_order(twap.username, twap.token_id, twap.symbol, twap.exchanges[0], twap.side, twap.limit_price, twap.total_quantity,twap.duration_seconds, twap.status)
+    try:
+        twap = TwapOrder(
+            username=username,
+            symbol=order.symbol,
+            side=order.side,
+            total_quantity=order.total_quantity,
+            limit_price=order.limit_price,
+            duration_seconds=order.duration_seconds,
+            exchanges=order.exchanges,
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error creating order: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating TWAP order object: {e}")
 
-    # Stocker l'état initial dans le dictionnaire global orders
-    orders[order.token_id] = {
-        "status": twap.status,
-        "executions": twap.executions,
-        "percentage_executed": 0,
-        "vwap": 0,
-        "avg_execution_price": None,
-        "lots_count": 0
-    }
+    try:
+        database_api.add_order(
+            twap.username, twap.token_id, twap.symbol, twap.exchanges[0],
+            twap.side, twap.limit_price, twap.total_quantity, twap.duration_seconds, twap.status
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating order in database: {e}")
 
-    # Lancer la méthode run() en tâche de fond avec le callback d'update
-    background_tasks.add_task(twap.run, update_order_state)
+    try:
+        # Launch run() in background with callback update for database
+        background_tasks.add_task(twap.run, update_order_state)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error scheduling TWAP execution: {e}")
 
-    return {"message": "TWAP order accepted", "token_id": order.token_id}
+    return {"message": "TWAP order accepted", "token_id": twap.token_id}
 
 
 @app.get("/orders",
-    tags=["Orders"],
-    summary="List All Orders",
-    description="Returns all orders or a specific order if order_id is provided. Requires authentication.",
-    responses={
-        200: {
-            "description": "List of Orders or a Specific Order",
-            "content": {"application/json": {"example": {
-                "orders": [
-                    {
-                        "order_id": "order123",
-                        "status": "IN_PROGRESS",
-                        "percentage_executed": 50.0,
-                        "executions": []
-                    },
-                    {
-                        "order_id": "order456",
-                        "status": "COMPLETED",
-                        "percentage_executed": 100.0,
-                        "executions": []
-                    }
-                ]
-            }}}
-        },
-        403: {"description": "Not authorized"}
-    }
-)
+         tags=["Orders"],
+         summary="List All Orders",
+         description="Returns all orders or a specific order if order_id is provided. Requires authentication.",
+         responses={
+             200: {
+                 "description": "List of Orders or a Specific Order",
+                 "content": {"application/json": {"example": {
+                     "orders": [
+                         {
+                             "order_id": "order123",
+                             "status": "IN_PROGRESS",
+                             "percentage_executed": 50.0,
+                             "executions": []
+                         },
+                         {
+                             "order_id": "order456",
+                             "status": "COMPLETED",
+                             "percentage_executed": 100.0,
+                             "executions": []
+                         }
+                     ]
+                 }}}
+             },
+             403: {"description": "Not authorized"}
+         }
+         )
 async def list_all_orders(order_id: str = None, username: str = Depends(verify_token)):
     """
     Retrieves all orders or a specific order if order_id is provided.
@@ -595,40 +604,38 @@ async def list_all_orders(order_id: str = None, username: str = Depends(verify_t
 
 
 @app.get("/orders/{order_id}",
-    tags=["Orders"],
-    summary="Get TWAP Order Status",
-    description="Retrieves the detailed execution information of a specific TWAP order.",
-    responses={
-        200: {
-            "description": "Execution details for the specified order",
-            "content": {"application/json": {"example": {
-                "order_id": "order123",
-                "status": "IN_PROGRESS",
-                "executions": [
-                    {"quantity": 0.2, "price": 20010.5, "timestamp": "2023-01-01T00:10:00Z"}
-                ],
-                "vwap": 20000.7,
-                "avg_execution_price": 20010.5,
-                "lots_count": 1,
-                "total_quantity_executed": 0.2
-            }}}
-        },
-        404: {"description": "Order not found"},
-        403: {"description": "Not authorized"}
-    }
-)
+         tags=["Orders"],
+         summary="Get TWAP Order Status",
+         description="Retrieves the detailed execution information of a specific TWAP order.",
+         responses={
+             200: {
+                 "description": "Execution details for the specified order",
+                 "content": {"application/json": {"example": {
+                     "order_id": "order123",
+                     "status": "COMPLETED",
+                     "percentage_executed": 100.0,
+                     "avg_execution_price": 20010.5,
+                     "lots_count": 3,
+                     "total_quantity_executed": 5.0
+                 }}}
+             },
+             404: {"description": "Order not found"},
+             403: {"description": "Not authorized"}
+         }
+         )
 async def get_order_status(order_id: str, username: str = Depends(verify_token)):
     """
-    Returns the execution details for a specified order.
+    Returns the current state of a TWAP order as stored in the database.
     """
     user = database_api.retrieve_user_by_username(username)
     if user:
-        order_exec = database_api.get_orders_executions(order_id)
-        if not order_exec:
+        order_state = database_api.get_order(order_id)
+        if not order_state:
             raise HTTPException(status_code=404, detail="Order not found")
-        return order_exec
+        return order_state
     else:
         raise HTTPException(status_code=403, detail="Not authorized")
+
 
 # =================================================================================
 #                                 LAUNCH API
