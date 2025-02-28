@@ -199,6 +199,8 @@ TBD
 
 Once the server is running, API documentation is available at: `http://localhost:8000/docs`.
 
+![Swagger Documentation](images/swagger_screenshot.png)
+
 ---
 
 ## Authors
