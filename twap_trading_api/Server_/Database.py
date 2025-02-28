@@ -19,7 +19,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 Base = declarative_base()
 
 
-
 class User(Base):
     """
         User class for database management
@@ -36,17 +35,22 @@ class Twap(Base):
         Twap Orders class for database management
     """
     __tablename__ = "twap_orders"
-    id = Column(Integer, primary_key=True,autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     symbol = Column(String, nullable=False)
     exchange = Column(String, nullable=False)
     side = Column(String, nullable=False)
-    avg_executed_price = Column(Float,nullable=False)
-    executed_quantity = Column(Float, nullable=False)
-    duration = Column(Float,nullable=False)
+    limit_price = Column(Float, nullable=False)
+    quantity = Column(Float, nullable=False)
+    duration = Column(Float, nullable=False)
     status = Column(Enum("pending", "executing", "completed", "canceled", name="order_status_enum"), nullable=False,
                     default="pending")
     created_at = Column(DateTime, default=func.now())
+
+    percent_exec = Column(Float, default=0.0)
+    avg_exec_price = Column(Float, default=0.0)
+    lots_count = Column(Integer, default=0)
+    total_exec = Column(Float, default=0.0)
 
 
 class TwapExecution(Base):
@@ -73,6 +77,7 @@ class Database:
         This class provides various methods to interact with the database, including
         user management and TWAP order processing.
     """
+
     def __init__(self):
         """
             Initialize the Database instance with a session factory.
@@ -173,19 +178,17 @@ class Database:
         finally:
             session.close()
 
-
-    def add_order_executions(self, order_id : str,symbol: str,executions: List[Dict]):
+    def add_order_executions(self, order_id: str, symbol: str, side: str, quantity: float, price: float,
+                             timestamp: str):
         """
             Add executions for a specified TWAP order in the database.
 
             Args:
                 order_id (str): The unique identifier of the TWAP order.
                 symbol (str): The trading pair symbol (e.g., "BTCUSDT").
-                executions (List[Dict]): A list of execution details, each containing:
-                    - side (str): "buy" or "sell".
-                    - quantity (float): Executed quantity.
-                    - price (float): Execution price.
-                    - timestamp (str, optional): Timestamp of the execution.
+                side (str): Order side, either "buy" or "sell".
+                price (str): executed price
+                timestamp (str): execution time
 
             Returns:
                 str: Confirmation message indicating successful insertion.
@@ -195,16 +198,15 @@ class Database:
         """
         session = self.SessionLocal()
         try:
-            for execution in executions:
-                new_order = TwapExecution(
-                    order_id=order_id,
-                    symbol=symbol,
-                    side=execution["side"],
-                    quantity=execution["quantity"],
-                    price=execution["price"],
-                    timestamp=execution.get("timestamp")
-                )
-                session.add(new_order)
+            new_order = TwapExecution(
+                order_id=order_id,
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                price=price,
+                timestamp=timestamp
+            )
+            session.add(new_order)
 
             session.commit()
             return "Orders successfully added"
@@ -214,7 +216,8 @@ class Database:
         finally:
             session.close()
 
-    def add_order(self,username: str,order_id:str,symbol:str,exchange:str,side:str,executed_price:float,executed_quantity:float,executed_duration:float,status:str):
+    def add_order(self, username: str, order_id: str, symbol: str, exchange: str, side: str, limit_price: float,
+                  quantity: float, executed_duration: float, status: str):
         """
             Add a new TWAP order to the database.
 
@@ -224,8 +227,8 @@ class Database:
                 symbol (str): Trading pair symbol (e.g., "BTCUSDT").
                 exchange (str): Exchange where the order is executed.
                 side (str): Order side, either "buy" or "sell".
-                executed_price (float): Average execution price of the order.
-                executed_quantity (float): Total executed quantity.
+                limit_price (float): Average execution price of the order.
+                quantity (float): Total executed quantity.
                 executed_duration (float): Duration of the order execution.
                 status (str): Current status of the order.
 
@@ -242,13 +245,13 @@ class Database:
                 id=order_id,
                 user_id=user.id,
                 symbol=symbol,
-                exchange = exchange,
+                exchange=exchange,
                 side=side,
-                avg_executed_price = executed_price,
-                executed_quantity=executed_quantity,
+                limit_price=limit_price,
+                quantity=quantity,
                 duration=executed_duration,
                 status=status,
-                created_at = func.now()
+                created_at=func.now()
             )
             session.add(new_order)
             session.commit()
@@ -258,7 +261,7 @@ class Database:
         finally:
             session.close()
 
-    def get_orders(self, order_id : str = None):
+    def get_orders(self, order_id: str = None):
         """
             Retrieve orders from the database.
 
@@ -278,21 +281,21 @@ class Database:
             for order in orders:
                 results.append({
                     "order_id": order.id,
-                    "user_id":order.user_id,
+                    "user_id": order.user_id,
                     "symbol": order.symbol,
                     "exchange": order.exchange,
-                    "side":order.side,
-                    "avg_executed_price": order.avg_executed_price,
-                    "executed_quantity": order.executed_quantity,
-                    "duration":order.duration,
-                    "status":order.status,
-                    "created_at":order.created_at
+                    "side": order.side,
+                    "limit_price": order.limit_price,
+                    "quantity": order.quantity,
+                    "duration": order.duration,
+                    "status": order.status,
+                    "created_at": order.created_at
                 })
             return results
         finally:
             session.close()
 
-    def get_orders_executions(self,order_id : str = None,symbol: str = None, side: str = None):
+    def get_orders_executions(self, order_id: str = None, symbol: str = None, side: str = None):
         """
             Retrieve execution details of TWAP orders.
 
@@ -317,15 +320,86 @@ class Database:
             results = []
             for execution in executions:
                 results.append({
-                    "id" : execution.id,
+                    "id": execution.id,
                     "order_id": execution.order_id,
                     "symbol": execution.symbol,
-                    "side":execution.side,
-                    "quantity":execution.quantity,
-                    "price":execution.price,
-                    "timestamp":execution.timestamp
+                    "side": execution.side,
+                    "quantity": execution.quantity,
+                    "price": execution.price,
+                    "timestamp": execution.timestamp
                 })
             return results
+        finally:
+            session.close()
+
+    def update_order_status(self, order_id: str, new_status: str):
+        """Met à jour le statut de l'ordre."""
+        session = self.SessionLocal()
+        try:
+            order = session.query(Twap).filter(Twap.id == order_id).first()
+            if order:
+                order.status = new_status
+                session.commit()
+        except Exception as e:
+            session.rollback()
+            print(f"Error updating order status: {e}")
+        finally:
+            session.close()
+
+    def update_order_state(self, order_id: str, state: Dict):
+        """
+        Met à jour dans la base les informations détaillées de l'ordre TWAP.
+        Le dictionnaire state doit contenir les clés suivantes :
+          - status
+          - percentage_executed
+          - vwap
+          - avg_execution_price
+          - lots_count
+          - total_quantity_executed
+        """
+        session = self.SessionLocal()
+        try:
+            order = session.query(Twap).filter(Twap.id == order_id).first()
+            if order:
+                order.status = state.get("status", order.status)
+                order.percent_exec = state.get("percent_exec", order.percent_exec)
+                order.avg_exec_price = state.get("avg_exec_price", order.avg_exec_price)
+                order.lots_count = state.get("lots_count", order.lots_count)
+                order.total_exec = state.get("total_exec", order.total_exec)
+                session.commit()
+        except Exception as e:
+            session.rollback()
+            raise Exception("Error updating order state: " + str(e))
+        finally:
+            session.close()
+
+    def get_order(self, order_id: str) -> dict:
+        """
+        Récupère les informations complètes d'un ordre TWAP depuis la table twap_orders,
+        y compris les champs mis à jour : percentage_executed, vwap, avg_execution_price,
+        lots_count, total_quantity_executed, etc.
+        """
+        session = self.SessionLocal()
+        try:
+            order = session.query(Twap).filter(Twap.id == order_id).first()
+            if order:
+                return {
+                    "order_id": order.id,
+                    "user_id": order.user_id,
+                    "symbol": order.symbol,
+                    "exchange": order.exchange,
+                    "side": order.side,
+                    "limit_price": order.limit_price,
+                    "quantity": order.quantity,
+                    "duration": order.duration,
+                    "status": order.status,
+                    "created_at": order.created_at,
+                    "percent_exec": order.percent_exec,
+                    "avg_exec_price": order.avg_exec_price,
+                    "lots_count": order.lots_count,
+                    "total_exec": order.total_exec
+                }
+            return {}
         finally:
             session.close()
 
