@@ -3,7 +3,6 @@ import websockets
 import json
 import requests
 import time
-import uuid
 from typing import Dict, Any, Optional, Set
 
 
