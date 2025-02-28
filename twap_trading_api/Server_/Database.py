@@ -301,7 +301,8 @@ class Database:
 
             Args:
                 order_id (str, optional): Order ID to filter executions (default: None).
-                symbol (str, optional): Trading pair symbol to filter executions (default: None).                    side (str, optional): Order side ("buy" or "sell") to filter executions (default: None).
+                symbol (str, optional): Trading pair symbol to filter executions (default: None).
+                side (str, optional): Order side ("buy" or "sell") to filter executions (default: None).
 
             Returns:
                 List[Dict]: A list of executions matching the given filters.
