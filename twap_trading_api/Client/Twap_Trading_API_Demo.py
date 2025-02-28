@@ -24,6 +24,21 @@ class APIClientDemo:
         self.websocket = None
         self.token = None
 
+    def ping_api(self):
+        """Checks if the API is running."""
+        print("\nSending Ping...")
+        try:
+            response = requests.get(f"{self.base_url}/ping")
+            if response.status_code == 200:
+                print(f"✅ API Ping Response: {response.json()}")
+                return True
+            else:
+                print(f"❌ API Ping Failed: {response.status_code}")
+                return False
+        except Exception as e:
+            print(f"❌ API Ping Error: {e}")
+            return False
+
     def login(self, username: str, password: str) -> bool:
         """Logs in and retrieves a JWT token."""
         print("\nLogging in to the API...")
@@ -184,6 +199,9 @@ async def main():
     """Main function to demonstrate API usage."""
     client = APIClientDemo()
 
+    # API Ping Test
+    client.ping_api()
+
     # Login & Authentication
     client.login("admin", "admin123")
 
@@ -211,9 +229,9 @@ async def main():
         "symbol": "BTCUSDT",
         "side": "buy",
         "total_quantity": 0.5,
-        "limit_price": 150000,
+        "limit_price": 100000,
         "duration_seconds": 5,
-        "exchanges": ["Binance"]
+        "exchanges": ["Binance", "Coinbase"]
     }
     token_id = client.place_twap_order(order_params)
     if token_id:

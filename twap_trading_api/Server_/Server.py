@@ -76,7 +76,7 @@ async def ping():
     return {
         "status": "ok",
         "message": "Server is running",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": (datetime.utcnow() + timedelta(hours=1)).isoformat()
     }
 
 

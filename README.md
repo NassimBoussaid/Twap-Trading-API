@@ -103,6 +103,24 @@ uvicorn twap_trading_api.Server_.app:app --reload
 
 The server will be available at `http://localhost:8000`.
 
+### Running Tests
+
+To run unit tests for the TWAP Trading API, ensure you have `poetry` installed and execute:
+
+```bash
+poetry run pytest
+```
+
+### Running the Demo
+
+A demonstration script (`APIClientDemo`) is included to showcase the capabilities of the TWAP Trading API. The script covers authentication, market data retrieval, WebSocket order book streaming, and order placement.
+
+To execute the demo script, ensure that the server is running and execute:
+
+```bash
+python twap_trading_api/Client/Twap_Trading_API_Demo.py
+```
+
 ---
 
 ## API Endpoints
@@ -172,12 +190,6 @@ The server will be available at `http://localhost:8000`.
 ---
 
 ## Streamlit
-
-TBD
-
----
-
-## Unitary testing
 
 TBD
 
