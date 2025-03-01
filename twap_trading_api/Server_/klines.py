@@ -83,7 +83,8 @@ def klines_page():
 
         return fig
 
-    # Fetch exchanges
+    # Cache the exchange list (only fetched once at startup)
+    @st.cache_data
     def get_exchanges():
         try:
             response = requests.get(f"{API_URL}/exchanges", timeout=5)
@@ -93,20 +94,35 @@ def klines_page():
             st.sidebar.error("Failed to retrieve exchange list.")
         return []
 
-    exchanges = get_exchanges()
-    exchange = st.sidebar.selectbox("Select a trading platform", exchanges)
-
-    # Fetch trading pairs
-    trading_pairs = []
-    if exchange:
+    # Cache trading pairs (fetch only when exchange changes)
+    def get_trading_pairs(exchange):
         try:
             response = requests.get(f"{API_URL}/{exchange}/symbols", timeout=5)
             if response.status_code == 200:
-                trading_pairs = response.json().get("symbols", [])
+                return response.json().get("symbols", [])
         except requests.exceptions.RequestException:
             st.sidebar.error("API connection error.")
+        return []
 
-    symbol = st.sidebar.selectbox("Trading Pair", trading_pairs)
+    # Load exchanges once at startup
+    exchanges = get_exchanges()
+
+    # Initialize session state for exchange selection
+    if "selected_exchange" not in st.session_state:
+        st.session_state["selected_exchange"] = exchanges[0] if exchanges else None
+        st.session_state["trading_pairs"] = get_trading_pairs(st.session_state["selected_exchange"])
+
+    # Sidebar: Exchange Selection
+    exchange = st.sidebar.selectbox("Select a trading platform", exchanges,
+                                    index=exchanges.index(st.session_state["selected_exchange"]) if st.session_state["selected_exchange"] in exchanges else 0)
+
+    # If exchange changes, update trading pairs
+    if exchange != st.session_state["selected_exchange"]:
+        st.session_state["selected_exchange"] = exchange
+        st.session_state["trading_pairs"] = get_trading_pairs(exchange)
+
+    # Sidebar: Trading Pair Selection
+    symbol = st.sidebar.selectbox("Trading Pair", st.session_state["trading_pairs"])
 
     # Interval
     interval_mapping = {
