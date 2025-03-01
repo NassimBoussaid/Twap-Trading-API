@@ -304,11 +304,14 @@ class Database:
         finally:
             session.close()
 
-    def get_orders_executions(self, order_id: str = None, symbol: str = None, side: str = None):
+    from fastapi import HTTPException
+
+    def get_orders_executions(self, user_id: int, order_id: str, symbol: str = None, side: str = None):
         """
-            Retrieve execution details of TWAP orders.
+            Retrieve execution details of TWAP orders for a specific user.
 
             Args:
+                user_id (int): ID of the user requesting executions.
                 order_id (str, optional): Order ID to filter executions (default: None).
                 symbol (str, optional): Trading pair symbol to filter executions (default: None).
                 side (str, optional): Order side ("buy" or "sell") to filter executions (default: None).
@@ -316,35 +319,62 @@ class Database:
             Returns:
                 List[Dict]: A list of executions matching the given filters.
         """
-
         session = self.SessionLocal()
         try:
-            query = session.query(TwapExecution)
-            if symbol:
-                query = query.filter(TwapExecution.symbol == symbol)
+            # Vérification que l'ordre appartient à l'utilisateur si un order_id est fourni
+            if order_id:
+                order = session.query(Twap).filter(Twap.id == order_id, Twap.user_id == user_id).first()
+                if not order:
+                    raise HTTPException(status_code=404, detail="Order not found or unauthorized")
+
+            # Construire la requête pour récupérer les exécutions
+            query = session.query(TwapExecution).join(Twap, TwapExecution.order_id == Twap.id).filter(
+                Twap.user_id == user_id)
+
             if order_id:
                 query = query.filter(TwapExecution.order_id == order_id)
+            if symbol:
+                query = query.filter(TwapExecution.symbol == symbol)
             if side:
                 query = query.filter(TwapExecution.side == side)
+
             executions = query.all()
-            results = []
-            for execution in executions:
-                results.append({
-                    "id": execution.id,
-                    "order_id": execution.order_id,
-                    "symbol": execution.symbol,
-                    "side": execution.side,
-                    "quantity": execution.quantity,
-                    "price": execution.price,
-                    "exchange": execution.exchange,
-                    "timestamp": execution.timestamp
-                })
+
+            if not executions:
+                raise HTTPException(status_code=404, detail="No executions found matching the criteria")
+
+            results = [{
+                "id": execution.id,
+                "order_id": execution.order_id,
+                "symbol": execution.symbol,
+                "side": execution.side,
+                "quantity": execution.quantity,
+                "price": execution.price,
+                "exchange": execution.exchange,
+                "timestamp": execution.timestamp
+            } for execution in executions]
+
             return results
+
         finally:
             session.close()
 
     def update_order_status(self, order_id: str, new_status: str):
-        """Met à jour le statut de l'ordre."""
+        """
+            Updates the status of an order in the database.
+
+            Args:
+                order_id (str): The unique identifier of the order to be updated.
+                new_status (str): The new status to assign to the order.
+
+            Behavior:
+                - Searches for the order with `order_id` in the database.
+                - If the order exists, updates its status to `new_status` and commits the change.
+                - In case of an error, rolls back the transaction and prints an error message.
+
+            Exceptions:
+                - Catches any exceptions that occur during the update process and displays an error message.
+        """
         session = self.SessionLocal()
         try:
             order = session.query(Twap).filter(Twap.id == order_id).first()
@@ -359,14 +389,29 @@ class Database:
 
     def update_order_state(self, order_id: str, state: Dict):
         """
-        Met à jour dans la base les informations détaillées de l'ordre TWAP.
-        Le dictionnaire state doit contenir les clés suivantes :
-          - status
-          - percentage_executed
-          - vwap
-          - avg_execution_price
-          - lots_count
-          - total_quantity_executed
+            Updates the detailed information of a TWAP order in the database.
+
+            The `state` dictionary must contain the following keys:
+                - status
+                - percentage_executed
+                - vwap
+                - avg_execution_price
+                - lots_count
+                - total_quantity_executed
+
+            Args:
+                order_id (str): The unique identifier of the order to update.
+                state (Dict): A dictionary containing the new order details.
+
+            Behavior:
+                - Searches for the order with `order_id` in the database.
+                - If the order exists, updates its attributes with values from `state`.
+                - Uses `.get()` to preserve existing values if a key is missing.
+                - Commits the changes to the database.
+                - In case of an error, rolls back the transaction and raises an exception.
+
+            Exceptions:
+                - Raises an exception if an error occurs while updating the order state.
         """
         session = self.SessionLocal()
         try:
