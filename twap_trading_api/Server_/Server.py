@@ -567,7 +567,7 @@ async def submit_twap_order(
 
 @app.get("/orders",
          tags=["Orders"],
-         summary="List All Orders",
+         summary="List All Orders Done By A Connected User",
          description="Returns all orders or a specific order if order_id is provided. Requires authentication.",
          responses={
              200: {
@@ -576,15 +576,35 @@ async def submit_twap_order(
                      "orders": [
                          {
                              "order_id": "order123",
-                             "status": "IN_PROGRESS",
-                             "percentage_executed": 50.0,
-                             "executions": []
+                             "user_id":2,
+                             "symbol":"BTCUSDT",
+                             "exchange":"Binance, Coinbase",
+                             "side":"buy",
+                             "limit_price":15000,
+                             "quantity":0.5,
+                             "duration":10,
+                             "status": "completed",
+                             "created_at":"2025-02-28 12:20:00",
+                             "avg_execution_price":80482.89,
+                             "lots_count":10,
+                             "total_executed":0.5,
+                             "percentage_executed": 75,
                          },
                          {
                              "order_id": "order456",
-                             "status": "COMPLETED",
-                             "percentage_executed": 100.0,
-                             "executions": []
+                             "user_id":2,
+                             "symbol":"ETHUSDT",
+                             "exchange":"Binance, Kucoin",
+                             "side":"buy",
+                             "limit_price":18000,
+                             "quantity":2,
+                             "duration":20,
+                             "status": "completed",
+                             "created_at":"2025-02-28 12:30:00",
+                             "avg_execution_price":2290.89,
+                             "lots_count":2,
+                             "total_executed":15,
+                             "percentage_executed": 100,
                          }
                      ]
                  }}}
@@ -598,7 +618,7 @@ async def list_all_orders(order_id: str = None, username: str = Depends(verify_t
     """
     user = database_api.retrieve_user_by_username(username)
     if user:
-        return database_api.get_orders(order_id)
+        return database_api.get_orders(user.id,order_id)
     else:
         raise HTTPException(status_code=403, detail="Not authorized")
 
@@ -611,12 +631,14 @@ async def list_all_orders(order_id: str = None, username: str = Depends(verify_t
              200: {
                  "description": "Execution details for the specified order",
                  "content": {"application/json": {"example": {
+                     "id":"640",
                      "order_id": "order123",
-                     "status": "COMPLETED",
-                     "percentage_executed": 100.0,
-                     "avg_execution_price": 20010.5,
-                     "lots_count": 3,
-                     "total_quantity_executed": 5.0
+                     "symbol":"BTCUSDT",
+                     "side":"buy",
+                     "quantity": 2,
+                     "price": 20010.5,
+                     "exchange": "Binance",
+                     "timestamp": "2025-03-01T10:17:27.329282"
                  }}}
              },
              404: {"description": "Order not found"},

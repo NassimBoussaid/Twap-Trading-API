@@ -263,23 +263,26 @@ class Database:
         finally:
             session.close()
 
-    def get_orders(self, order_id: str = None):
+    def get_orders(self, user_id: int,order_id: str = None):
         """
             Retrieve orders from the database.
 
             Args:
                 order_id (str, optional): Specific order ID to retrieve (default: None).
+                user_id (int): Specific user id to retrieve his orders
 
             Returns:
                 List[Dict]: A list of orders with their details.
         """
         session = self.SessionLocal()
         try:
-            query = session.query(Twap)
+            query = session.query(Twap).filter(Twap.user_id == user_id)
             if order_id:
                 query = query.filter(Twap.id == order_id)
             orders = query.all()
             results = []
+            if not orders:
+                raise HTTPException(status_code=404, detail="No orders found")
             for order in orders:
                 results.append({
                     "order_id": order.id,
