@@ -231,7 +231,7 @@ async def main():
         "total_quantity": 0.5,
         "limit_price": 100000,
         "duration_seconds": 5,
-        "exchanges": ["Binance", "Coinbase"]
+        "exchanges": ["Binance", "Kucoin"]
     }
     token_id = client.place_twap_order(order_params)
     if token_id:
