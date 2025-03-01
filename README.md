@@ -106,7 +106,7 @@ A demonstration script (`APIClientDemo`) is included to showcase the capabilitie
 To execute the demo script, ensure that the server is running and execute:
 
 ```bash
-python twap_trading_api/Client/Twap_Trading_API_Demo.py
+poetry run python twap_trading_api/Client/Twap_Trading_API_Demo.py
 ```
 
 ---
