@@ -130,3 +130,15 @@ def show_signup_form():
                 st.error(response.json().get("detail", "❌ Registration failed. Please try again."))
         except requests.RequestException:
             st.error("❌ Failed to connect to the server. Please check the API URL or your connection.")
+
+
+
+
+
+
+
+
+
+
+
+
