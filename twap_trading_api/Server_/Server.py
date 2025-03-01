@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from twap_trading_api.Server_.Exchanges.ExchangeMulti import ExchangeMulti
 from twap_trading_api.Server_.Exchanges import EXCHANGE_MAPPING
-from twap_trading_api.Server_.Database import *
+from twap_trading_api.Server_.DatabaseManager.Database import *
 from twap_trading_api.Server_.Authentification.AuthentificationManager import *
 from twap_trading_api.Server_.TwapOrder import TwapOrder
 
