@@ -280,3 +280,15 @@ def klines_page():
                     st.error(f"Erreur {response.status_code}: {response.text}")
             except requests.exceptions.RequestException as e:
                 st.error(f"Erreur de connexion à l'API: {e}")
+
+
+
+
+
+
+
+
+
+
+
+
