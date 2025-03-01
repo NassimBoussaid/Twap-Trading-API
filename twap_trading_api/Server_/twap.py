@@ -1,3 +1,5 @@
+from typing import List
+
 import streamlit as st
 import requests
 import asyncio
@@ -58,7 +60,32 @@ def twap_page():
             st.error(f"Unable to fetch symbols for {exchange}")
             return []
 
-    async def websocket_listener(symbol: str, exchange: str, container: st.delta_generator.DeltaGenerator):
+    @st.cache_data
+    def fetch_common_trading_pairs(exchanges: list[str]) -> list[str]:
+        """
+        For each exchange in the list, retrieves its trading pairs and constructs the intersection of all these sets.
+        Returns the list of common symbols, sorted in alphabetical order
+        """
+        if not exchanges:
+            return []
+
+        common_symbols = None
+
+        for ex in exchanges:
+            symbols = fetch_trading_pairs(ex)
+            symbols_set = set(symbols)
+
+            if common_symbols is None:
+                common_symbols = symbols_set
+            else:
+                common_symbols.intersection_update(symbols_set)
+
+            if not common_symbols:
+                break
+
+        return sorted(common_symbols) if common_symbols else []
+
+    async def websocket_listener(symbol: str, exchange: List[str], container: st.delta_generator.DeltaGenerator):
 
         try:
             async with websockets.connect(WEBSOCKET_URL) as websocket:
@@ -66,7 +93,7 @@ def twap_page():
                 subscribe_message = {
                     "action": "subscribe",
                     "symbol": symbol,
-                    "exchanges": [exchange]
+                    "exchanges": exchange
                 }
                 await websocket.send(json.dumps(subscribe_message))
 
@@ -87,10 +114,10 @@ def twap_page():
                         order_book_df = pd.DataFrame({
                             "Bid Price": list(bids.keys()),
                             "Bid Volume": [v[0] for v in bids.values()],
-                            "Bid Exchange": [exchange] * len(bids),
+                            "Bid Exchange": [v[1] for v in bids.values()],
                             "Ask Price": list(asks.keys()),
                             "Ask Volume": [v[0] for v in asks.values()],
-                            "Ask Exchange": [exchange] * len(asks)
+                            "Ask Exchange": [v[1] for v in asks.values()]
                         })
 
                         # Update the Streamlit container
@@ -104,8 +131,7 @@ def twap_page():
         except Exception as e:
             container.error(f"WebSocket error: {e}")
 
-    def display_twap_summary(order_status):
-
+    def display_twap_summary(order_status) -> pd.DataFrame:
         data = {
             "Field": [
                 "Order ID",
@@ -128,8 +154,7 @@ def twap_page():
                 f"{order_status['total_exec']:.2f}",
             ]
         }
-        df = pd.DataFrame(data)
-        st.table(df.style.hide(axis="index"))
+        return pd.DataFrame(data)
 
     async def monitor_order_until_completion(order_id: str, headers: dict):
         """
@@ -137,6 +162,11 @@ def twap_page():
         Displays the final summary if completed.
         """
         order_completed = False
+
+        # 1) To store order updates
+        table_placeholder = st.empty()
+        msg = ""
+
         while not order_completed:
             try:
                 order_status_endpoint = f"{API_BASE_URL}/orders/?order_id={order_id}"
@@ -144,12 +174,19 @@ def twap_page():
 
                 if response.status_code == 200:
                     order_status = response.json()[0]
-                    if order_status.get("status") == "completed":
-                        st.success("✅ Order completed successfully!")
-                        st.write("### 📊 Final Order Summary")
-                        display_twap_summary(order_status)
+
+                    if order_status.get("status") == "executing":
+                        msg = "### 📊 Executing Order..."
+                    elif order_status.get("status") == "completed":
+                        msg = "### 📊 Final Order Summary"
                         order_completed = True
-                        break
+                        st.success("✅ Order completed successfully!")
+
+                    with table_placeholder.container():
+                        st.markdown(msg)
+                        df = display_twap_summary(order_status)
+                        st.table(df.style.hide(axis="index"))
+
                 else:
                     st.error(f"Failed to retrieve order status: {response.text}")
                     break
@@ -165,8 +202,8 @@ def twap_page():
         st.title("TWAP Trading Interface")
 
         # Select exchange and fetch pairs
-        selected_exchange = st.selectbox("Select Exchange", exchanges)
-        trading_pairs = fetch_trading_pairs(selected_exchange)
+        selected_exchanges = st.multiselect("Select Exchanges", exchanges, default=["Binance"])
+        trading_pairs = fetch_common_trading_pairs(selected_exchanges)
 
         # Select trading pair
         symbol = st.selectbox("Select Trading Pair", trading_pairs)
@@ -200,7 +237,7 @@ def twap_page():
                 "total_quantity": quantity,
                 "limit_price": limit_price,
                 "duration_seconds": duration,
-                "exchanges": [selected_exchange]
+                "exchanges": selected_exchanges
             }
             headers = {"Authorization": f"Bearer {token}"}
 
@@ -228,7 +265,7 @@ def twap_page():
 
                 # Task 1: Real-time order book
                 task_list.append(asyncio.create_task(
-                    websocket_listener(symbol, selected_exchange, order_book_container)
+                    websocket_listener(symbol, selected_exchanges, order_book_container)
                 ))
 
                 # Task 2: If an order was submitted, track its status
