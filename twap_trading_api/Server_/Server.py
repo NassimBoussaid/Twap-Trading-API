@@ -529,12 +529,54 @@ def update_order_state(twap):
         print("Error updating order state in the database:", e)
 
 
-@app.post("/orders/twap")
+@app.post("/orders/twap",
+          tags=["Orders"],
+          summary="Submit a TWAP Order",
+          description="""
+          Submits a **Time-Weighted Average Price (TWAP) order** that will be executed over a defined duration.
+          """,
+          responses={
+              200: {
+                  "description": "TWAP Order Accepted",
+                  "content": {
+                      "application/json": {
+                          "example": {
+                              "message": "TWAP order accepted",
+                              "token_id": "550e8400-e29b-41d4-a716-446655440000"
+                          }
+                      }
+                  }
+              },
+              400: {
+                  "description": "Invalid Order Parameters",
+                  "content": {
+                      "application/json": {
+                          "example": {
+                              "detail": "Invalid order parameters"
+                          }
+                      }
+                  }
+              },
+              500: {
+                  "description": "Internal Server Error",
+                  "content": {
+                      "application/json": {
+                          "example": {
+                              "detail": "Error scheduling TWAP execution"
+                          }
+                      }
+                  }
+              }
+          }
+          )
 async def submit_twap_order(
         order: TWAPOrderRequest,
         background_tasks: BackgroundTasks,
         username: str = Depends(verify_token)
 ):
+    """
+    Creates and schedules a TWAP order for execution.
+    """
     try:
         twap = TwapOrder(
             username=username,
@@ -576,34 +618,34 @@ async def submit_twap_order(
                      "orders": [
                          {
                              "order_id": "order123",
-                             "user_id":2,
-                             "symbol":"BTCUSDT",
-                             "exchange":"Binance, Coinbase",
-                             "side":"buy",
-                             "limit_price":15000,
-                             "quantity":0.5,
-                             "duration":10,
+                             "user_id": 2,
+                             "symbol": "BTCUSDT",
+                             "exchange": "Binance, Coinbase",
+                             "side": "buy",
+                             "limit_price": 15000,
+                             "quantity": 0.5,
+                             "duration": 10,
                              "status": "completed",
-                             "created_at":"2025-02-28 12:20:00",
-                             "avg_execution_price":80482.89,
-                             "lots_count":10,
-                             "total_executed":0.5,
+                             "created_at": "2025-02-28 12:20:00",
+                             "avg_execution_price": 80482.89,
+                             "lots_count": 10,
+                             "total_executed": 0.5,
                              "percentage_executed": 75,
                          },
                          {
                              "order_id": "order456",
-                             "user_id":2,
-                             "symbol":"ETHUSDT",
-                             "exchange":"Binance, Kucoin",
-                             "side":"buy",
-                             "limit_price":18000,
-                             "quantity":2,
-                             "duration":20,
+                             "user_id": 2,
+                             "symbol": "ETHUSDT",
+                             "exchange": "Binance, Kucoin",
+                             "side": "buy",
+                             "limit_price": 18000,
+                             "quantity": 2,
+                             "duration": 20,
                              "status": "completed",
-                             "created_at":"2025-02-28 12:30:00",
-                             "avg_execution_price":2290.89,
-                             "lots_count":2,
-                             "total_executed":15,
+                             "created_at": "2025-02-28 12:30:00",
+                             "avg_execution_price": 2290.89,
+                             "lots_count": 2,
+                             "total_executed": 15,
                              "percentage_executed": 100,
                          }
                      ]
