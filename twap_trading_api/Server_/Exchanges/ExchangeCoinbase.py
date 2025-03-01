@@ -1,5 +1,3 @@
-from jwt import PyJWT
-
 from twap_trading_api.Server_.Exchanges.ExchangeBase import ExchangeBase
 import requests
 import websockets

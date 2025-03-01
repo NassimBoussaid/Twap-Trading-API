@@ -19,7 +19,7 @@ def login_page():
     if "websocket_running" not in st.session_state:
         st.session_state.websocket_running = False  # to control TWAP websockets
 
-    # Reset variables when arriving on the login page
+    # Reset variables when going to the login page
     reset_session_state()
 
     # Choice between Login or Sign Up
@@ -130,15 +130,3 @@ def show_signup_form():
                 st.error(response.json().get("detail", "❌ Registration failed. Please try again."))
         except requests.RequestException:
             st.error("❌ Failed to connect to the server. Please check the API URL or your connection.")
-
-
-
-
-
-
-
-
-
-
-
-

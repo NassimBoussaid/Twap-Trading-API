@@ -8,7 +8,7 @@ def symbols_page():
         st.session_state.page = 'login'
         st.rerun()
 
-    # Sidebar (unchanged as you requested)
+    # Sidebar
     with st.sidebar:
         st.title("Navigation")
         if st.session_state.get('guest_mode', False):

@@ -1,6 +1,4 @@
-﻿import datetime
-
-from sqlalchemy import create_engine, Column, String, Float, Integer, ForeignKey, PrimaryKeyConstraint, Enum, DateTime, \
+﻿from sqlalchemy import create_engine, Column, String, Float, Integer, ForeignKey, Enum, DateTime, \
     func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base
@@ -10,13 +8,11 @@ from passlib.context import CryptContext
 from typing import Dict, List
 import os
 
-import os
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Récupère le chemin du fichier actuel
 DATABASE_PATH = os.path.join(BASE_DIR, "api_database.db")
 DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
-# Connexion à SQLite
+# Connection to SQLite
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -309,8 +305,6 @@ class Database:
         finally:
             session.close()
 
-    from fastapi import HTTPException
-
     def get_orders_executions(self, user_id: int, order_id: str, symbol: str = None, side: str = None):
         """
             Retrieve execution details of TWAP orders for a specific user.
@@ -326,13 +320,13 @@ class Database:
         """
         session = self.SessionLocal()
         try:
-            # Vérification que l'ordre appartient à l'utilisateur si un order_id est fourni
+            # Check that the order matches the user if user_id is given
             if order_id:
                 order = session.query(Twap).filter(Twap.id == order_id, Twap.user_id == user_id).first()
                 if not order:
                     raise HTTPException(status_code=404, detail="Order not found or unauthorized")
 
-            # Construire la requête pour récupérer les exécutions
+            # Building request to retrieve executions
             query = session.query(TwapExecution).join(Twap, TwapExecution.order_id == Twap.id).filter(
                 Twap.user_id == user_id)
 
@@ -433,7 +427,6 @@ class Database:
             raise Exception("Error updating order state: " + str(e))
         finally:
             session.close()
-
 
 
 database_api = Database()

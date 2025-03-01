@@ -1,12 +1,10 @@
 from typing import List
-
 import streamlit as st
 import requests
 import asyncio
 import websockets
 import json
 import pandas as pd
-import time
 
 API_BASE_URL = "http://localhost:8000"
 WEBSOCKET_URL = "ws://localhost:8000/ws"
@@ -15,7 +13,7 @@ EXCHANGES_ENDPOINT = f"{API_BASE_URL}/exchanges"
 
 
 def twap_page():
-    # Vérification de session (redirection vers login si ni logged_in ni guest_mode)
+    # Session check (redirect to login page if necessary)
     if not st.session_state.get('logged_in', False) and not st.session_state.get('guest_mode', False):
         st.session_state.page = 'login'
         st.rerun()

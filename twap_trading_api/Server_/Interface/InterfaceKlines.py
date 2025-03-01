@@ -41,6 +41,7 @@ def klines_page():
 
     st.sidebar.markdown("<h1 style='text-align: left; font-size: 26px; font-weight: bold;'>Market Data</h1>",
                         unsafe_allow_html=True)
+
     def candle_graph(df, exchange):
         fig = make_subplots(
             rows=2, cols=1, shared_xaxes=True,
@@ -60,7 +61,7 @@ def klines_page():
             row=1, col=1
         )
 
-        # Volume bar colors (Green for price increase, Red for price decrease)
+        # Volume bar colors (Blue for price increase, Red for price decrease)
         colors = ['#2962ff' if close >= open_ else '#e91e63' for open_, close in
                   zip(df['open_price'], df['close_price'])]
 
@@ -149,9 +150,6 @@ def klines_page():
     # List of interval
     interval_list = list(interval_mapping.get(exchange, {}).keys())
     interval = st.sidebar.selectbox("Time Interval", interval_list)
-
-    # Convert interval for each exchange
-    selected_interval = interval_mapping.get(exchange, {}).get(interval, interval)
 
     # Date
     start_date = st.sidebar.date_input("Start Date", min_value=date(2020, 1, 1), max_value=date.today())
@@ -251,11 +249,11 @@ def klines_page():
                             if col in df.columns:
                                 df[col] = pd.to_numeric(df[col], errors="coerce")
                         # Compute required values
-                        open_price = df["Open"].iloc[0]  # First open price
-                        high_price = df["High"].max()  # Highest price in dataset
-                        low_price = df["Low"].min()  # Lowest price in dataset
-                        close_price = df["Close"].iloc[-1]  # Last close price
-                        avg_volume = df["Volume"].mean()  # Average volume
+                        open_price = df["Open"].iloc[0]
+                        high_price = df["High"].max()
+                        low_price = df["Low"].min()
+                        close_price = df["Close"].iloc[-1]
+                        avg_volume = df["Volume"].mean()
 
                         # Layout for Metric
                         metric_data = {
@@ -296,15 +294,3 @@ def klines_page():
                     st.error(f"Erreur {response.status_code}: {response.text}")
             except requests.exceptions.RequestException as e:
                 st.error(f"Erreur de connexion à l'API: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
