@@ -35,40 +35,25 @@ This repository contains a complete system designed for paper trading using TWAP
 
 ```plaintext
 Twap-Trading-API/
-├── .github/                        # GitHub-related files (e.g., workflows, actions)
-├── tests/                           # Unit tests and testing files
+├── .github/                        # GitHub-related files (e.g., workflows, CI/CD actions)
+│   └── workflows/                  # CI/CD pipeline configuration
+│       └── ci.yml                   # CI configuration file
+├── images/                         # Image assets for documentation
+├── tests/                          # Unit tests and testing framework
 │   ├── __init__.py                  # Initialization file for tests
 │   └── test_server.py               # Tests for server components
-├── twap_trading_api/                # Core implementation of the API
-│   ├── Client/                      # Client-side code to interact with the API
-│   │   ├── __init__.py              # Client module initialization
-│   │   └── Client.py                # Main client implementation
-│   ├── Server_                      # Server-side code
-│   │   ├── __init__.py              # Server module initialization
-│   │   ├── Authentication/         # Authentication system
-│   │   │   ├── __init__.py          # Initialization for authentication
-│   │   │   └── AuthenticationManager.py  # Manages user authentication
-│   │   ├── Exchanges/               # Exchange integration logic
-│   │   │   ├── __init__.py          # Initialization for exchange modules
-│   │   │   ├── ExchangeBase.py      # Base exchange class (for common functionality)
-│   │   │   ├── ExchangeBinance.py   # Binance exchange integration
-│   │   │   ├── ExchangeBybit.py     # Bybit exchange integration
-│   │   │   ├── ExchangeCoinbase.py  # Coinbase exchange integration
-│   │   │   ├── ExchangeKucoin.py    # Kucoin exchange integration
-│   │   │   └── ExchangeMulti.py     # Aggregator for multiple exchanges
-│   │   ├── Database/                # Database and persistence logic
-│   │   │   ├── __init__.py          # Initialization for database-related files
-│   │   │   ├── Database.py          # Database logic for orders and user management
-│   │   │   └── api_database.db      # SQLite or other database storage
-│   │   ├── Interface/               # Database and persistence logic
-│   │   │   ├── main.py              # FastAPI app entry point
-│   │   │   ├── InterfaceLogin.py    # Login and authentication logic
-│   │   │   ├── InterfaceSymbol.py   # Symbol and trading pair logic
-│   │   │   ├── InterfaceKlines.py   # Exchange and Klines logic
-│   │   │   └── InterfaceTwap.py     # TWAP order execution logic
-│   │   ├── Server.py                # Main server code for API routing
-├── pyproject.toml                   # Project configuration and dependencies
-└── README.md                        # Project documentation (this file)
+├── twap_trading_api/                # Core implementation of the TWAP Trading API
+│   ├── Client/                      # Client-side implementation for API interaction
+│   ├── Server_/                     # Server-side implementation
+│   │   ├── Authentication/          # Authentication system for API users
+│   │   ├── DatabaseManager/         # Database and persistence management
+│   │   ├── Exchanges/               # Integration with various exchanges (Binance, Bybit, etc.)
+│   │   ├── Interface/               # API endpoints and user interface logic
+│   │   └── Server.py                # Main server entry point
+├── LICENSE                          # License information
+├── poetry.lock                      # Dependency lock file
+├── pyproject.toml                   # Project dependencies and configuration
+└── README.md                        # Project documentation
 
 ```
 
@@ -194,7 +179,30 @@ python twap_trading_api/Client/Twap_Trading_API_Demo.py
 
 ## Streamlit
 
-TBD
+![Streamlit GIF](images/streamlit_interface.gif)
+
+A **Streamlit-based web interface** is included to provide a user-friendly way to interact with the TWAP Trading API. This dashboard allows users to submit TWAP orders, visualize real-time market data, and monitor execution status without requiring direct API calls.
+
+### Features of the Streamlit App:
+- **User Authentication**: Login with JWT-based authentication to access secured features.
+- **Market Data Dashboard**:
+  - Displays real-time order book depth.
+  - Shows candlestick charts for selected trading pairs.
+  - Lists available exchanges and trading pairs.
+- **TWAP Order Execution**:
+  - Submit TWAP orders through an intuitive form.
+  - Monitor order execution in real-time with status updates.
+- **WebSocket Integration**:
+  - Live streaming of market data and order book movements.
+
+### Running the Streamlit Interface
+
+To start the Streamlit app, ensure the **API server** is running, then execute:
+
+```bash
+cd twap_trading_api/Server_/Interface
+streamlit run main.py
+```
 
 ---
 
