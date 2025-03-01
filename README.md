@@ -60,11 +60,13 @@ Twap-Trading-API/
 │   │   │   ├── __init__.py          # Initialization for database-related files
 │   │   │   ├── Database.py          # Database logic for orders and user management
 │   │   │   └── api_database.db      # SQLite or other database storage
-│   │   ├── app.py                   # FastAPI app entry point
-│   │   ├── login.py                 # Login and authentication logic
+│   │   ├── Interface/               # Database and persistence logic
+│   │   │   ├── main.py              # FastAPI app entry point
+│   │   │   ├── InterfaceLogin.py    # Login and authentication logic
+│   │   │   ├── InterfaceSymbol.py   # Symbol and trading pair logic
+│   │   │   ├── InterfaceKlines.py   # Exchange and Klines logic
+│   │   │   └── InterfaceTwap.py     # TWAP order execution logic
 │   │   ├── Server.py                # Main server code for API routing
-│   │   ├── symbol.py                # Symbol and trading pair logic
-│   │   ├── klines.py                # Exchange and Klines logic
 ├── pyproject.toml                   # Project configuration and dependencies
 └── README.md                        # Project documentation (this file)
 
