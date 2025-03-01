@@ -43,11 +43,6 @@ jobs:
       run: |
         touch twap_trading_api/Server_/api_database.db
 
-    - name: Apply database migrations (if applicable)
-      run: |
-        poetry run alembic upgrade head
-      continue-on-error: true
-
     - name: Start API server
       run: |
         poetry run uvicorn twap_trading_api.Server_.Server:app --host 0.0.0.0 --port 8000 --reload &
