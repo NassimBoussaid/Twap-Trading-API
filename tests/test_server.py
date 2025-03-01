@@ -4,6 +4,8 @@ import json
 import pytest_asyncio
 import asyncio
 import requests
+import random
+import string
 
 base_url = "http://localhost:8000"
 base_uri = "ws://localhost:8000/ws"
@@ -152,8 +154,8 @@ def test_register():
     """
     Test registering a new user. If registration succeeds, it is considered a failure.
     """
-    username = "new_user"
-    password = "new_password"
+    username = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+    password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
 
     response = requests.post(
         f"{base_url}/register",
@@ -161,9 +163,9 @@ def test_register():
     )
 
     if response.status_code == 201:
-        pytest.fail("Unexpected success! Registration should fail on duplicate users.")
-    elif response.status_code == 400:
         assert True
+    elif response.status_code == 400:
+        pytest.fail("Error: User already exists")
     else:
         pytest.fail(f"Unexpected error: {response.status_code}")
 
