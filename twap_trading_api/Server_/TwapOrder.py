@@ -3,7 +3,7 @@ import asyncio
 from typing import Dict, List
 import uuid
 
-from twap_trading_api.Server_.Database import database_api
+from twap_trading_api.Server_.DatabaseManager.Database import database_api
 from twap_trading_api.Server_.Exchanges.ExchangeMulti import ExchangeMulti
 from twap_trading_api.Server_.Exchanges import EXCHANGE_MAPPING
 

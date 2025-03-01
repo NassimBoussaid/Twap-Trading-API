@@ -8,8 +8,13 @@ from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException
 from passlib.context import CryptContext
 from typing import Dict, List
+import os
 
-DATABASE_URL = "sqlite:///api_database.db"
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Récupère le chemin du fichier actuel
+DATABASE_PATH = os.path.join(BASE_DIR, "api_database.db")
+DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
 # Connexion à SQLite
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
