@@ -124,7 +124,7 @@ def klines_page():
     # Sidebar: Trading Pair Selection
     symbol = st.sidebar.selectbox("Trading Pair", st.session_state["trading_pairs"])
 
-    # Interval
+    # Intervals
     interval_mapping = {
         "Binance": {
             "1m": "1m", "3m": "3m", "5m": "5m", "15m": "15m", "30m": "30m",
