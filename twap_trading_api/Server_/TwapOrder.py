@@ -25,6 +25,7 @@ class TwapOrder:
         status (str): The current order status.
         avg_execution_price (float): The average execution price.
     """
+
     def __init__(
             self,
             username: str,
@@ -95,7 +96,7 @@ class TwapOrder:
             if available_volume <= 0:
                 continue
             qty = min(remaining, available_volume)
-            executions.append({"price": price, "quantity": qty})
+            executions.append({"price": price, "quantity": qty, "exchange": source})
             remaining -= qty
 
         return executions
@@ -128,11 +129,13 @@ class TwapOrder:
                         "timestamp": datetime.now().isoformat(),
                         "side": self.side,
                         "quantity": sub["quantity"],
-                        "price": sub["price"]
+                        "price": sub["price"],
+                        "exchange": sub["exchange"]
                     }
                     self.executions.append(execution)
                     database_api.add_order_executions(self.token_id, self.symbol, execution["side"],
-                                                      execution["quantity"], execution["price"], execution["timestamp"])
+                                                      execution["quantity"], execution["price"], execution["exchange"],
+                                                      execution["timestamp"])
                     total_executed += sub["quantity"]
                     total_cost += sub["price"] * sub["quantity"]
             self.status = "executing"

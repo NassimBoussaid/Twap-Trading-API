@@ -64,6 +64,7 @@ class TwapExecution(Base):
     side = Column(String, nullable=False)
     quantity = Column(Float, nullable=False)
     price = Column(Float, nullable=False)
+    exchange = Column(String, nullable=False)
     timestamp = Column(String, nullable=False)
 
 
@@ -178,7 +179,7 @@ class Database:
         finally:
             session.close()
 
-    def add_order_executions(self, order_id: str, symbol: str, side: str, quantity: float, price: float,
+    def add_order_executions(self, order_id: str, symbol: str, side: str, quantity: float, price: float, exchange: str,
                              timestamp: str):
         """
             Add executions for a specified TWAP order in the database.
@@ -204,6 +205,7 @@ class Database:
                 side=side,
                 quantity=quantity,
                 price=price,
+                exchange=exchange,
                 timestamp=timestamp
             )
             session.add(new_order)

@@ -550,7 +550,7 @@ async def submit_twap_order(
 
     try:
         database_api.add_order(
-            twap.username, twap.token_id, twap.symbol, twap.exchanges[0],
+            twap.username, twap.token_id, twap.symbol, ", ".join(twap.exchanges),
             twap.side, twap.limit_price, twap.total_quantity, twap.duration_seconds, twap.status
         )
     except Exception as e:
