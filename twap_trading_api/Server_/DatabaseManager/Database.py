@@ -12,7 +12,7 @@ import os
 
 import os
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Récupère le chemin du fichier actuel
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_PATH = os.path.join(BASE_DIR, "api_database.db")
 DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
