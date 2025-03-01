@@ -86,7 +86,7 @@ poetry shell
 To start the server locally, run the following command:
 
 ```bash
-uvicorn twap_trading_api.Server_.app:app --reload
+uvicorn twap_trading_api.Server_.Server:app --reload
 ```
 
 The server will be available at `http://localhost:8000`.
