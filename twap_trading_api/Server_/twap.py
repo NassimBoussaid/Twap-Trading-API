@@ -11,6 +11,7 @@ WEBSOCKET_URL = "ws://localhost:8000/ws"
 TWAP_ENDPOINT = f"{API_BASE_URL}/orders/twap"
 EXCHANGES_ENDPOINT = f"{API_BASE_URL}/exchanges"
 
+
 def twap_page():
     # Vérification de session (redirection vers login si ni logged_in ni guest_mode)
     if not st.session_state.get('logged_in', False) and not st.session_state.get('guest_mode', False):
@@ -42,7 +43,6 @@ def twap_page():
             st.session_state.guest_mode = False
             st.session_state.page = 'login'
             st.rerun()
-
 
     # Fetch exchanges
     exchanges_response = requests.get(EXCHANGES_ENDPOINT)
@@ -139,11 +139,11 @@ def twap_page():
         order_completed = False
         while not order_completed:
             try:
-                order_status_endpoint = f"{API_BASE_URL}/orders/{order_id}"
+                order_status_endpoint = f"{API_BASE_URL}/orders/?order_id={order_id}"
                 response = requests.get(order_status_endpoint, headers=headers)
 
                 if response.status_code == 200:
-                    order_status = response.json()
+                    order_status = response.json()[0]
                     if order_status.get("status") == "completed":
                         st.success("✅ Order completed successfully!")
                         st.write("### 📊 Final Order Summary")
@@ -246,16 +246,3 @@ def twap_page():
             asyncio.run(main())
         else:
             order_book_container.info("Click 'Show Live Order Book' to start the live order book feed.")
-
-
-
-
-
-
-
-
-
-
-
-
-

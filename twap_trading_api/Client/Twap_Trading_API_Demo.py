@@ -163,13 +163,13 @@ class APIClientDemo:
         headers = {"Authorization": f"Bearer {self.token}"}
 
         while True:
-            response = requests.get(f"{self.base_url}/orders/{token_id}", headers=headers)
+            response = requests.get(f"{self.base_url}/orders/?order_id={token_id}", headers=headers)
             if response.status_code != 200:
                 print("❌ Failed to fetch order status:", response.text)
                 break
 
-            order_status = response.json()
-            percentage = order_status.get("percentage_executed", 0)
+            order_status = response.json()[0]
+            percentage = order_status.get("percent_exec", 0)
             print(f"Order Status: {order_status.get('status', 'Unknown')} - Executed: {percentage:.2f}%")
 
             if order_status.get("status") == "completed":
