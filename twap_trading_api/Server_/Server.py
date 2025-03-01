@@ -629,7 +629,7 @@ async def get_order_status(order_id: str, username: str = Depends(verify_token))
     """
     user = database_api.retrieve_user_by_username(username)
     if user:
-        order_state = database_api.get_order(order_id)
+        order_state = database_api.get_orders_executions(order_id)
         if not order_state:
             raise HTTPException(status_code=404, detail="Order not found")
         return order_state

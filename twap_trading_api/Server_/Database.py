@@ -291,7 +291,11 @@ class Database:
                     "quantity": order.quantity,
                     "duration": order.duration,
                     "status": order.status,
-                    "created_at": order.created_at
+                    "created_at": order.created_at,
+                    "percent_exec": order.percent_exec,
+                    "avg_exec_price": order.avg_exec_price,
+                    "lots_count": order.lots_count,
+                    "total_exec": order.total_exec
                 })
             return results
         finally:
@@ -329,6 +333,7 @@ class Database:
                     "side": execution.side,
                     "quantity": execution.quantity,
                     "price": execution.price,
+                    "exchange": execution.exchange,
                     "timestamp": execution.timestamp
                 })
             return results
@@ -376,35 +381,6 @@ class Database:
         finally:
             session.close()
 
-    def get_order(self, order_id: str) -> dict:
-        """
-        Récupère les informations complètes d'un ordre TWAP depuis la table twap_orders,
-        y compris les champs mis à jour : percentage_executed, vwap, avg_execution_price,
-        lots_count, total_quantity_executed, etc.
-        """
-        session = self.SessionLocal()
-        try:
-            order = session.query(Twap).filter(Twap.id == order_id).first()
-            if order:
-                return {
-                    "order_id": order.id,
-                    "user_id": order.user_id,
-                    "symbol": order.symbol,
-                    "exchange": order.exchange,
-                    "side": order.side,
-                    "limit_price": order.limit_price,
-                    "quantity": order.quantity,
-                    "duration": order.duration,
-                    "status": order.status,
-                    "created_at": order.created_at,
-                    "percent_exec": order.percent_exec,
-                    "avg_exec_price": order.avg_exec_price,
-                    "lots_count": order.lots_count,
-                    "total_exec": order.total_exec
-                }
-            return {}
-        finally:
-            session.close()
 
 
 database_api = Database()
