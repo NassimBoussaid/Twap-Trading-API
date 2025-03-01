@@ -94,7 +94,8 @@ async def ping():
                  "content": {"application/json": {"example": {
                      "exchanges": ["Binance", "Bybit", "Coinbase", "Kucoin"]
                  }}}
-             }
+             },
+             422: {"description": "Validation Error"}
          }
          )
 async def get_exchanges():
@@ -115,7 +116,8 @@ async def get_exchanges():
                      "symbols": ["BTCUSDT", "ETHUSDT", "BNBUSDT"]
                  }}}
              },
-             404: {"description": "Exchange not available"}
+             404: {"description": "Exchange not available"},
+             422: {"description": "Validation Error"}
          }
          )
 async def get_symbols(exchange: str):
@@ -154,7 +156,8 @@ async def get_symbols(exchange: str):
                      }
                  }
              },
-             404: {"description": "Exchange or Trading Pair Not Found"}
+             404: {"description": "Exchange or Trading Pair Not Found"},
+             422: {"description": "Validation Error"}
          }
          )
 async def get_historical_data(exchange: str, symbol: str, interval: str, start_time: str, end_time: str):
@@ -361,7 +364,8 @@ async def lifespan():
                       "token_type": "bearer"
                   }}}
               },
-              401: {"description": "Invalid username or password"}
+              401: {"description": "Invalid username or password"},
+              422: {"description": "Validation Error"}
           }
           )
 async def login(request: LoginRequest):
@@ -417,7 +421,8 @@ async def secure_endpoint(username: str = Depends(verify_token)):
                       "message": "User correctly registered"
                   }}}
               },
-              400: {"description": "Username already exists"}
+              400: {"description": "Username already exists"},
+              422: {"description": "Validation Error"}
           }
           )
 async def register(request: RegisterRequest):
@@ -557,6 +562,7 @@ def update_order_state(twap):
                       }
                   }
               },
+              422: {"description": "Validation Error"},
               500: {
                   "description": "Internal Server Error",
                   "content": {
@@ -651,7 +657,8 @@ async def submit_twap_order(
                      ]
                  }}}
              },
-             403: {"description": "Not authorized"}
+             403: {"description": "Not authorized"},
+             422: {"description": "Validation Error"}
          }
          )
 async def list_all_orders(order_id: str = None, username: str = Depends(verify_token)):
@@ -684,7 +691,8 @@ async def list_all_orders(order_id: str = None, username: str = Depends(verify_t
                  }}}
              },
              404: {"description": "Order not found"},
-             403: {"description": "Not authorized"}
+             403: {"description": "Not authorized"},
+             422: {"description": "Validation Error"}
          }
          )
 async def get_order_status(order_id: str, username: str = Depends(verify_token)):
