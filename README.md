@@ -64,6 +64,7 @@ Twap-Trading-API/
 │   │   ├── login.py                 # Login and authentication logic
 │   │   ├── Server.py                # Main server code for API routing
 │   │   ├── symbol.py                # Symbol and trading pair logic
+│   │   ├── klines.py                # Exchange and Klines logic
 ├── pyproject.toml                   # Project configuration and dependencies
 └── README.md                        # Project documentation (this file)
 
