@@ -39,6 +39,10 @@ jobs:
       run: |
         poetry install
 
+    - name: Ensure Database Exists
+      run: |
+        touch twap_trading_api/Server_/api_database.db
+
     - name: Start API server
       run: |
         poetry run uvicorn twap_trading_api.Server_.Server:app --host 0.0.0.0 --port 8000 --reload &
