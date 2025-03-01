@@ -24,9 +24,9 @@ def main():
     # Security: When changing pages, stop processes (like websocket or TWAP order tracking)
     if st.session_state.page != 'twap':
         st.session_state.websocket_running = False
-        st.session_state.pop('order_id', None)   
-        st.session_state.pop('headers', None)    
-        st.session_state.pop('show_orderbook', None) 
+        st.session_state.pop('order_id', None)   # Nettoie l'ID de l'ordre TWAP
+        st.session_state.pop('headers', None)    # Nettoie les headers TWAP
+        st.session_state.pop('show_orderbook', None)  # Arrête l'affichage de l'order book
 
     # Router
     if st.session_state.page == 'login':
