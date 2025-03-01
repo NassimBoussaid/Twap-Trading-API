@@ -111,6 +111,25 @@ python twap_trading_api/Client/Twap_Trading_API_Demo.py
 
 ---
 
+# User Profiles in the Database
+
+The database has **7 users** with two roles:
+
+- **Admin (`admin`)** – Full access to user management and all API features.
+- **Regular Users** – Can retrieve market data and manage their own TWAP orders.
+
+| ID  | Username  | Password       | Role  |
+|-----|----------|---------------|-------|
+| 1   | nicolas  | couturaud123  | user  |
+| 2   | admin    | admin123      | admin |
+| 3   | new_user | new_password  | user  |
+| 4   | nassim   | boussaid123   | user  |
+| 5   | karthy   | mourougaya123 | user  |
+| 6   | hugo     | soulier123    | user  |
+| 7   | remi     | genet123      | user  |
+
+---
+
 ## API Endpoints
 
 ## General Endpoints
@@ -179,9 +198,9 @@ python twap_trading_api/Client/Twap_Trading_API_Demo.py
 
 ## Streamlit
 
-![Streamlit GIF](images/streamlit_interface.gif)
-
 A **Streamlit-based web interface** is included to provide a user-friendly way to interact with the TWAP Trading API. This dashboard allows users to submit TWAP orders, visualize real-time market data, and monitor execution status without requiring direct API calls.
+
+![Streamlit GIF](images/streamlit_interface.gif)
 
 ### Features of the Streamlit App:
 - **User Authentication**: Login with JWT-based authentication to access secured features.
